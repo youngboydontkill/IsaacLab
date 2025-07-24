@@ -1,0 +1,16 @@
+IsaacLab/
+logs/
+outputs/
+
+# ide :
+.idea/
+.vscode/
+
+# pycache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ref :
+roboparty.py

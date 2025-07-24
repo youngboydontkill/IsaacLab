@@ -1,0 +1,10 @@
+pyproject.toml
+setup.py
+ext_template/__init__.py
+ext_template/ui_extension_example.py
+ext_template.egg-info/PKG-INFO
+ext_template.egg-info/SOURCES.txt
+ext_template.egg-info/dependency_links.txt
+ext_template.egg-info/not-zip-safe
+ext_template.egg-info/requires.txt
+ext_template.egg-info/top_level.txt

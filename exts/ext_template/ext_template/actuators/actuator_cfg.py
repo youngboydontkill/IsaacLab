@@ -4,10 +4,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 
-from omni.isaac.lab.actuators import ImplicitActuatorCfg
-from omni.isaac.lab.actuators import DelayedPDActuatorCfg
+from isaaclab.actuators import ImplicitActuatorCfg
+from isaaclab.actuators import DelayedPDActuatorCfg
 
-from omni.isaac.lab.utils import configclass
+from isaaclab.utils import configclass
 
 from .actuator_pd import DelayedImplicitActuator
 from .actuator_pd import DelayedPDActuator_S42

@@ -3,15 +3,15 @@ from __future__ import annotations
 import torch
 from typing import TYPE_CHECKING
 
-from omni.isaac.lab.managers import SceneEntityCfg
-from omni.isaac.lab.sensors import ContactSensor
-from omni.isaac.lab.assets import Articulation, RigidObject
-from omni.isaac.lab.managers.manager_base import ManagerTermBase
-from omni.isaac.lab.sensors import ContactSensor, RayCaster
-from omni.isaac.lab.utils.math import quat_rotate_inverse, yaw_quat
+from isaaclab.managers import SceneEntityCfg
+from isaaclab.sensors import ContactSensor
+from isaaclab.assets import Articulation, RigidObject
+from isaaclab.managers.manager_base import ManagerTermBase
+from isaaclab.sensors import ContactSensor, RayCaster
+from isaaclab.utils.math import quat_apply_inverse, yaw_quat
 
 if TYPE_CHECKING:
-    from omni.isaac.lab.envs import ManagerBasedRLEnv, ManagerBasedEnv
+    from isaaclab.envs import ManagerBasedRLEnv, ManagerBasedEnv
 
 
 def feet_air_time(
@@ -205,7 +205,7 @@ def track_lin_vel_xy_yaw_frame_exp(
     """Reward tracking of linear velocity commands (xy axes) in the gravity aligned robot frame using exponential kernel."""
     # extract the used quantities (to enable type-hinting)
     asset = env.scene[asset_cfg.name]
-    vel_yaw = quat_rotate_inverse(
+    vel_yaw = quat_apply_inverse(
         yaw_quat(asset.data.root_link_quat_w), asset.data.root_com_lin_vel_w[:, :3]
     )
     lin_vel_error = torch.sum(

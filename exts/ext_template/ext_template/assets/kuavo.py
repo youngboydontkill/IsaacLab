@@ -1,6 +1,6 @@
-import omni.isaac.lab.sim as sim_utils
-from omni.isaac.lab.assets.articulation import ArticulationCfg
-from omni.isaac.lab.utils.assets import ISAACLAB_NUCLEUS_DIR
+import isaaclab.sim as sim_utils
+from isaaclab.assets.articulation import ArticulationCfg
+from isaaclab.utils.assets import ISAACLAB_NUCLEUS_DIR
 
 from ext_template.actuators import DelayedPDActuatorCfg_S42
 from ext_template.assets import ISAAC_ASSET_DIR

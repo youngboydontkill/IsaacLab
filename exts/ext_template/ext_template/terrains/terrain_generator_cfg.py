@@ -5,8 +5,8 @@
 
 """Configuration for custom terrains."""
 
-import omni.isaac.lab.terrains as terrain_gen
-from omni.isaac.lab.terrains.terrain_generator_cfg import TerrainGeneratorCfg
+import isaaclab.terrains as terrain_gen
+from isaaclab.terrains.terrain_generator_cfg import TerrainGeneratorCfg
 
 ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
     size=(8.0, 8.0),

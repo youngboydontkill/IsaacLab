@@ -12,7 +12,7 @@ from . import agents
 ##
 gym.register(
     id="Legged-Isaac-Velocity-Flat-Kuavo-S42-v0",
-    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.flat_env_cfg:KuavoS42FlatEnvCfg",
@@ -22,7 +22,7 @@ gym.register(
 
 gym.register(
     id="Legged-Isaac-Velocity-Flat-Kuavo-S42-Play-v0",
-    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.flat_env_cfg:KuavoS42FlatEnvCfg_PLAY",
@@ -32,7 +32,7 @@ gym.register(
 
 gym.register(
     id="Legged-Isaac-Velocity-Rough-Kuavo-S42-v0",
-    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.rough_env_cfg:KuavoS42RoughEnvCfg",
@@ -42,7 +42,7 @@ gym.register(
 
 gym.register(
     id="Legged-Isaac-Velocity-Rough-Kuavo-S42-Play-v0",
-    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.fough_env_cfg:KuavoS42RoughEnvCfg_PLAY",
@@ -52,7 +52,7 @@ gym.register(
 
 gym.register(
     id="Legged-Isaac-Velocity-Flat-Kuavo-S42-DreamWaq-v0",
-    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.flat_env_cfg:KuavoS42FlatEnvCfg",
@@ -62,7 +62,7 @@ gym.register(
 
 gym.register(
     id="Legged-Isaac-Velocity-Flat-Kuavo-S42-DreamWaq-Play-v0",
-    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.flat_env_cfg:KuavoS42FlatEnvCfg_PLAY",
@@ -72,7 +72,7 @@ gym.register(
 
 gym.register(
     id="Legged-Isaac-Velocity-Rough-Kuavo-S42-DreamWaq-v0",
-    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.rough_env_cfg:KuavoS42RoughEnvCfg",
@@ -82,7 +82,7 @@ gym.register(
 
 gym.register(
     id="Legged-Isaac-Velocity-Rough-Kuavo-S42-DreamWaq-Play-v0",
-    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.rough_env_cfg:KuavoS42RoughEnvCfg_PLAY",

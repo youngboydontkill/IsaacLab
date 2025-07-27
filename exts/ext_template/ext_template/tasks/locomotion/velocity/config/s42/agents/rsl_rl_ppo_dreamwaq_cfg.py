@@ -1,6 +1,6 @@
-from omni.isaac.lab.utils import configclass
+from isaaclab.utils import configclass
 
-from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
+from isaaclab_rl.rsl_rl import (
     RslRlOnPolicyRunnerCfg,
     RslRlPpoActorCriticCfg,
     RslRlPpoAlgorithmCfg,

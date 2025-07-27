@@ -9,11 +9,11 @@ import torch
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from omni.isaac.core.utils.types import ArticulationActions
+from isaacsim.core.utils.types import ArticulationActions
 
-from omni.isaac.lab.actuators import ImplicitActuator
-from omni.isaac.lab.actuators import DelayedPDActuator
-from omni.isaac.lab.utils import DelayBuffer
+from isaaclab.actuators import ImplicitActuator
+from isaaclab.actuators import DelayedPDActuator
+from isaaclab.utils import DelayBuffer
 
 from .ankle_s42 import joint_to_motor_position, get_joint_dumping_torque
 

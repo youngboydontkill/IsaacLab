@@ -18,11 +18,11 @@
 
 ### 环境要求
 - Ubuntu 20.04/22.04 LTS
-- Isaac Sim 4.2
-- Isaac Lab 1.4.1
-- rsl-rl 2.1.0/2.3.3
+- Isaac Sim 4.5
+- Isaac Lab 2.1.0
+- rsl-rl 2.3.1
 
-具体的安装流程参考飞书文档
+具体的安装流程参考飞书文档，一键安装脚本是对的
 ### Run with Docker 
 同样参考飞书文档，如果已经按照文档说明配置好了isaac-lab-base image，直接
 ```bash
@@ -33,6 +33,32 @@ cd docker
 
 
 ### 训练配置
+**首次训练前安装exts_template和修改isaaclab加速度更新逻辑:**
+1. 安装exts_template
+```bash
+python -m pip install -e exts/ext_template
+```
+2. 修改isaaclab的加速度更新逻辑
+需要修改isaaclab内关于加速度更新的逻辑，在update处不更新motor的加速度，减低更新频率。但若需要观测电机加速度，不建议屏蔽此处代码。
+
+```
+#/{isaaclab_path}source/isaaclab/isaaclab/assets/articulation/articulation_data.py:98
+--
+    def update(self, dt: float):
+        # update the simulation timestamp
+        self._sim_timestamp += dt
+        # Trigger an update of the joint acceleration buffer at a higher frequency
+        # since we do finite differencing.
+        self.joint_acc
+++
+    def update(self, dt: float):
+        # update the simulation timestamp
+        self._sim_timestamp += dt
+        # Trigger an update of the joint acceleration buffer at a higher frequency
+        # since we do finite differencing.
+        #self.joint_acc
+```
+
 使用VS Code调试配置进行训练：
 ```json
 {
@@ -57,6 +83,16 @@ python scripts/rsl_rl/train.py \
     --task Legged-Isaac-Velocity-Flat-Kuavo-S42-v0 \
     --num_envs 4096 \
     --headless
+```
+
+使用wandb监视训练(示例)：
+```bash
+python scripts/rsl_rl/train.py \
+    --task Legged-Isaac-Velocity-Flat-Kuavo-S42-v0 \
+    --num_envs 4096 \
+    --headless \
+    --logger wandb \
+    --log_project_name leju-robot-rl
 ```
 
 ### 可视化测试

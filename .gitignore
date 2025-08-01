@@ -14,3 +14,9 @@ __pycache__/
 
 # ref :
 roboparty.py
+
+# wandb
+wandb/
+
+# nv_shadercache
+nv_shadercache/

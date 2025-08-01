@@ -15,6 +15,10 @@ from isaaclab.app import AppLauncher
 # local imports
 import cli_args  # isort: skip
 
+import os
+print("SETTING UP PROXY")
+os.environ["HTTP_PROXY"] = "http://127.0.0.1:8889"
+os.environ["HTTPS_PROXY"] = "http://127.0.0.1:8889"
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL.")

@@ -10,155 +10,101 @@ import torch
 import numpy as np
 
 # define symmetry rules for single observation
-policy_obs_mirror_indices = [0, 1, 2,\
-                             3, 4, 5,\
-                             6, 7, 8,\
-                             10, 9, 12, 11, 14, 13, 16, 15, 18, 17, 20, 19, 22, 21, 24, 23, 26, 25, 28, 27, 30, 29, 32, 31, 34, 33, \
-                             36, 35, 38, 37, 40, 39, 42, 41, 44, 43, 46, 45, 48, 47, 50, 49, 52, 51, 54, 53, 56, 55, 58, 57, 60, 59, \
-                             62, 61, 64, 63, 66, 65, 68, 67, 70, 69, 72, 71, 74, 73, 76, 75, 78, 77, 80, 79, 82, 81, 84, 83, 86, 85]
-policy_obs_mirror_signs = [-1, 1, -1,\
-                           1, -1, 1,\
-                           1, -1, -1,\
-                           -1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1, \
-                           -1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1, \
-                           -1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1]
-critic_obs_mirror_indices = [0, 1, 2,\
-                             3, 4, 5,\
-                             6, 7, 8,\
-                             10, 9, 12, 11, 14, 13, 16, 15, 18, 17, 20, 19, 22, 21, 24, 23, 26, 25, 28, 27, 30, 29, 32, 31, 34, 33, \
-                             36, 35, 38, 37, 40, 39, 42, 41, 44, 43, 46, 45, 48, 47, 50, 49, 52, 51, 54, 53, 56, 55, 58, 57, 60, 59, \
-                             62, 61, 64, 63, 66, 65, 68, 67, 70, 69, 72, 71, 74, 73, 76, 75, 78, 77, 80, 79, 82, 81, 84, 83, 86, 85, \
-                             87, 88, 89, \
-                             91, 90, 93, 92, 95, 94, 97, 96, 99, 98, 101, 100, 103, 102, 105, 104, 107, 106, 109, 108, 111, 110, 113, 112, 115, 114, \
-                             117, 116, 119, 118, 121, 120, 123, 122, 125, 124, 127, 126, 129, 128, 131, 130, 133, 132, 135, 134, 137, 136, 139, 138, 141, 140, \
-                             145, 146, 147, 142, 143, 144, \
-                             151, 152, 153, 148, 149, 150, \
-                             154, \
-                             158, 159, 160, 155, 156, 157, \
-                             161, 162, 163, \
-                             164, \
-                             165, 166, 167, \
-                             168, 169, 170, \
-                             172, 171, \
-                             174, 173]
-critic_obs_mirror_signs = [-1, 1, -1,\
-                           1, -1, 1,\
-                           1, -1, -1,\
-                           -1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1, \
-                           -1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1, \
-                           -1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1, \
-                           1, -1, 1, \
-                           -1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1, \
-                           -1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1, \
-                           1, -1, 1, 1, -1, 1, \
-                           1, -1, 1, 1, -1, 1, \
-                           1, \
-                           1, 1, 1, 1, 1, 1, \
-                           1, -1, 1, \
-                           1, \
-                           1, -1, 1, \
-                           -1, 1, -1, \
-                           1, 1, \
-                           1, 1]
 act_mirror_indices = [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14, 17, 16, 19, 18, 21, 20, 23, 22, 25, 24]
 act_mirror_signs = [-1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1]
 
 # define obs&act length and check the symmetry rules, define history length
-policy_single_obs_length = 87
-critic_single_obs_length = 175
-act_lenght = 26
 history_len = 5
-assert policy_single_obs_length == policy_obs_mirror_indices.__len__()
-assert policy_single_obs_length == policy_obs_mirror_signs.__len__()
-assert critic_single_obs_length == critic_obs_mirror_indices.__len__()
-assert critic_single_obs_length == critic_obs_mirror_signs.__len__()
-assert act_lenght == act_mirror_indices.__len__()
-assert act_lenght == act_mirror_signs.__len__()
 
 # expand policy obs symmetry rules w.r.t history length
 singleObs = {
-            "base_ang_vel":[0,3],
-            "gravity":[3,6],
-            "cmd":[6,9],
-            "joint_pos":[9,26+9],
-            "joint_vel":[26+9,26+26+9],
-            "action":[26+26+9,26+26+26+9]
+            "base_ang_vel":[[0, 1, 2],[-1,1,-1]],
+            "gravity":[[0,1,2],[1,-1,1]],
+            "cmd":[[0,1,2],[1, -1, -1]],
+            "joint_pos":[[1,  0,  3,  2,  5,  4,  7,  6,  9,  8, 11, 10,
+                            13, 12, 15, 14, 17,16, 19, 18, 21, 20, 23, 22, 25, 24],
+                        [-1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1]],
+            "joint_vel":[[1,  0,  3,  2,  5,  4,  7,  6,  9,  8, 11, 10,
+                            13, 12, 15, 14, 17,16, 19, 18, 21, 20, 23, 22, 25, 24],
+                        [-1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1]],
+            "action":[[1,  0,  3,  2,  5,  4,  7,  6,  9,  8, 11, 10,
+                            13, 12, 15, 14, 17,16, 19, 18, 21, 20, 23, 22, 25, 24],
+                        [-1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1]]
         }
-policy_obs_mirror_indices_expanded_arranged = np.array([])    # 最终调整好顺序的下标向量
-policy_obs_mirror_signs_expanded_arranged = np.array([])    # 最终调整好顺序的符号向量
 
-policy_obs_mirror_indices_np = np.array(policy_obs_mirror_indices)
-policy_obs_mirror_indices_expanded = [policy_obs_mirror_indices_np + i * policy_obs_mirror_indices_np.shape[0] for i in range(history_len)]
-policy_obs_mirror_indices_expanded_np = np.array(policy_obs_mirror_indices_expanded).reshape(history_len, -1)   # 此时每行是一个
-# 然后根据singleobs的chunk重新调整顺序
+singleCriticObs = {
+            "base_ang_vel":[[0, 1, 2],[-1,1,-1]],
+            "gravity":[[0,1,2],[1,-1,1]],
+            "cmd":[[0,1,2],[1, -1, -1]],
+            "joint_pos":[[1,  0,  3,  2,  5,  4,  7,  6,  9,  8, 11, 10,
+                            13, 12, 15, 14, 17,16, 19, 18, 21, 20, 23, 22, 25, 24],
+                        [-1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1]],
+            "joint_vel":[[1,  0,  3,  2,  5,  4,  7,  6,  9,  8, 11, 10,
+                            13, 12, 15, 14, 17,16, 19, 18, 21, 20, 23, 22, 25, 24],
+                        [-1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1]],
+            "action":[[1,  0,  3,  2,  5,  4,  7,  6,  9,  8, 11, 10,
+                            13, 12, 15, 14, 17,16, 19, 18, 21, 20, 23, 22, 25, 24],
+                        [-1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1]],
+            "base_lin_vel": [[0, 1, 2],[1, -1, 1]],
+            "joint_torques": [[1,  0,  3,  2,  5,  4,  7,  6,  9,  8, 11, 10,
+                            13, 12, 15, 14, 17,16, 19, 18, 21, 20, 23, 22, 25, 24],
+                        [-1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1]],
+            "joint_accs": [[1,  0,  3,  2,  5,  4,  7,  6,  9,  8, 11, 10,
+                            13, 12, 15, 14, 17,16, 19, 18, 21, 20, 23, 22, 25, 24],
+                        [-1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1]],
+            "feet_lin_vel": [[3, 4, 5, 0, 1, 2],[1, -1, 1, 1, -1, 1]],
+            "feet_contact_force": [[3, 4, 5, 0, 1, 2],[1, -1, 1, 1, -1, 1]],
+            "base_mass_rel": [[0,],[1,]],
+            "rigid_body_material": [[3, 4, 5, 0, 1, 2],[1, 1, 1, 1, 1, 1]],
+            "base_com": [[0,1,2],[1,-1,1]],
+            "action_delay": [[0,],[1,]],
+            "push_force": [[0,1,2],[1,-1,1]],
+            "push_torque": [[0, 1, 2],[-1,1,-1]],
+            "feet_heights": [[1,0],[1,1]],
+            "feet_air_times": [[1,0],[1,1]],
+}
+
+idx = 0
+policy_obs_mirror_indices = []
+policy_obs_mirror_signs = []
 for k in singleObs:
-    start_idx = singleObs[k][0]
-    end_idx = singleObs[k][1]
+    n = len(singleObs[k][0])
     for i in range(history_len):
-        obs_i = policy_obs_mirror_indices_expanded_np[i]
-        # concate 
-        policy_obs_mirror_indices_expanded_arranged = np.concatenate((policy_obs_mirror_indices_expanded_arranged, obs_i[start_idx:end_idx]))
-        policy_obs_mirror_signs_expanded_arranged = np.concatenate((policy_obs_mirror_signs_expanded_arranged, policy_obs_mirror_signs[start_idx:end_idx]))
-policy_obs_mirror_indices_expanded_arranged = np.array(policy_obs_mirror_indices_expanded_arranged).reshape(-1)
-policy_obs_mirror_signs_expanded_arranged = np.array(policy_obs_mirror_signs_expanded_arranged).reshape(-1)
-# print(f"policy_obs_mirror_indices_expanded_arranged:\n{policy_obs_mirror_indices_expanded_arranged}")
-# print(f"policy_obs_mirror_signs_expanded_arranged:\n{policy_obs_mirror_signs_expanded_arranged}")
-# print(policy_obs_mirror_signs_expanded_arranged.__len__())
+        start_idx = idx 
+        end_idx = idx + n
+        policy_obs_mirror_indices.extend([i+start_idx for i in singleObs[k][0]])
+        policy_obs_mirror_signs.extend(singleObs[k][1])
+        idx += n
 
-# expand critic obs symmetry rules w.r.t history length
-singleCri = {
-            "base_ang_vel":[0,3],
-            "gravity":[3,6],
-            "cmd":[6,9],
-            "joint_pos":[9,26+9],
-            "joint_vel":[26+9,26+26+9],
-            "action":[26+26+9,26+26+26+9],
-            "base_lin_vel": [87, 90],
-            "joint_torques": [90, 116],
-            "joint_accs": [116, 142],
-            "feet_lin_vel": [142, 148],
-            "feet_contact_force": [148, 154],
-            "base_mass_rel": [154, 155],
-            "rigid_body_material": [155, 161],
-            "base_com": [161, 164],
-            "action_delay": [164, 165],
-            "push_force": [165, 168],
-            "push_torque": [168, 171],
-            "feet_heights": [171, 173],
-            "feet_air_times": [173, 175]
-        }
-critic_obs_mirror_indices_expanded_arranged = np.array([])    # 最终调整好顺序的下标向量
-critic_obs_mirror_signs_expanded_arranged = np.array([])    # 最终调整好顺序的符号向量
-
-critic_obs_mirror_indices_np = np.array(critic_obs_mirror_indices)
-critic_obs_mirror_indices_expanded = [critic_obs_mirror_indices_np + i * critic_obs_mirror_indices_np.shape[0] for i in range(history_len)]
-critic_obs_mirror_indices_expanded_np = np.array(critic_obs_mirror_indices_expanded).reshape(history_len, -1)   # 此时每行是一个
-# 然后根据singleobs的chunk重新调整顺序
-for k in singleCri:
-    start_idx = singleCri[k][0]
-    end_idx = singleCri[k][1]
+policy_obs_mirror_indices = np.array(policy_obs_mirror_indices).reshape(-1)
+policy_obs_mirror_signs = np.array(policy_obs_mirror_signs).reshape(-1)
+# mirror critic obs
+critic_obs_mirror_indices = []
+critic_obs_mirror_signs = []
+idx = 0
+for k in singleCriticObs:
+    n = len(singleCriticObs[k][0])
     for i in range(history_len):
-        obs_i = critic_obs_mirror_indices_expanded_np[i]
-        # concate 
-        critic_obs_mirror_indices_expanded_arranged = np.concatenate((critic_obs_mirror_indices_expanded_arranged, obs_i[start_idx:end_idx]))
-        critic_obs_mirror_signs_expanded_arranged = np.concatenate((critic_obs_mirror_signs_expanded_arranged, critic_obs_mirror_signs[start_idx:end_idx]))
-critic_obs_mirror_indices_expanded_arranged = np.array(critic_obs_mirror_indices_expanded_arranged).reshape(-1)
-critic_obs_mirror_signs_expanded_arranged = np.array(critic_obs_mirror_signs_expanded_arranged).reshape(-1)
-# print(f"critic_obs_mirror_indices_expanded_arranged:\n{critic_obs_mirror_indices_expanded_arranged}")
-# print(f"critic_obs_mirror_signs_expanded_arranged:\n{critic_obs_mirror_signs_expanded_arranged}")
-# print(critic_obs_mirror_signs_expanded_arranged.__len__())
+        start_idx = idx 
+        end_idx = idx + n
+        critic_obs_mirror_indices.extend([i+start_idx for i in singleCriticObs[k][0]])
+        critic_obs_mirror_signs.extend(singleCriticObs[k][1])
+        idx += n
+critic_obs_mirror_indices = np.array(critic_obs_mirror_indices).reshape(-1)
+critic_obs_mirror_signs = np.array(critic_obs_mirror_signs).reshape(-1)
+
 
 def mirror_policy_observation(policy_obs):
-    mirrored_policy_obs = policy_obs[..., policy_obs_mirror_indices_expanded_arranged]
-    policy_obs_mirror_signs_tensor_expanded = torch.tensor(policy_obs_mirror_signs_expanded_arranged, 
+    mirrored_policy_obs = policy_obs[..., policy_obs_mirror_indices]
+    policy_obs_mirror_signs_tensor_expanded = torch.tensor(policy_obs_mirror_signs, 
                                                            dtype=policy_obs.dtype, 
                                                            device=policy_obs.device)
     mirrored_policy_obs = mirrored_policy_obs * policy_obs_mirror_signs_tensor_expanded
     return mirrored_policy_obs
 
 def mirror_critic_observation(critic_obs):
-    mirrored_critic_obs = critic_obs[..., critic_obs_mirror_indices_expanded_arranged]
-    critic_obs_mirror_signs_tensor_expanded = torch.tensor(critic_obs_mirror_signs_expanded_arranged, 
+    mirrored_critic_obs = critic_obs[..., critic_obs_mirror_indices]
+    critic_obs_mirror_signs_tensor_expanded = torch.tensor(critic_obs_mirror_signs, 
                                                            dtype=critic_obs.dtype, 
                                                            device=critic_obs.device)
     mirrored_critic_obs = mirrored_critic_obs * critic_obs_mirror_signs_tensor_expanded

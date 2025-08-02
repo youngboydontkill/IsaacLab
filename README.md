@@ -93,6 +93,19 @@ python scripts/rsl_rl/train.py \
     --headless \
     --logger wandb \
     --log_project_name leju-robot-rl
+    --use_proxy=True
+```
+
+从checkpoint开始训练,默认会从相同task名字的最新的文件夹实验中加载模型权重，如果需要指定exp，需要设置`--load_run 2025-08-02_16-13-19`
+```bash
+python scripts/rsl_rl/train.py \
+    --task Legged-Isaac-Velocity-Flat-Kuavo-S42-v0 \
+    --num_envs 4096 \
+    --headless \
+    --logger wandb \
+    --log_project_name leju-robot-rl
+    --resume=True
+    --checkpoint model_999.pt
 ```
 
 ### 可视化测试

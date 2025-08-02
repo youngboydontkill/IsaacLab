@@ -15,11 +15,6 @@ from isaaclab.app import AppLauncher
 # local imports
 import cli_args  # isort: skip
 
-import os
-print("SETTING UP PROXY")
-os.environ["HTTP_PROXY"] = "http://127.0.0.1:8889"
-os.environ["HTTPS_PROXY"] = "http://127.0.0.1:8889"
-
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL.")
 parser.add_argument("--video", action="store_true", default=False, help="Record videos during training.")
@@ -29,6 +24,7 @@ parser.add_argument("--num_envs", type=int, default=None, help="Number of enviro
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
+parser.add_argument("--use_proxy",type=bool,default=False, help="Use proxy for wandb logging.")
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
@@ -38,6 +34,11 @@ args_cli, hydra_args = parser.parse_known_args()
 # always enable cameras to record video
 if args_cli.video:
     args_cli.enable_cameras = True
+
+if (args_cli.use_proxy):
+    import os
+    os.environ["HTTP_PROXY"] = "http://127.0.0.1:8889"
+    os.environ["HTTPS_PROXY"] = "http://127.0.0.1:8889"
 
 # clear out sys.argv for Hydra
 sys.argv = [sys.argv[0]] + hydra_args

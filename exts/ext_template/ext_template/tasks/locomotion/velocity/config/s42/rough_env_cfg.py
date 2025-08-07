@@ -297,7 +297,7 @@ class RewardsCfg:
 
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_clip,
-        weight=10.0,
+        weight=20.0,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg(
@@ -319,7 +319,7 @@ class RewardsCfg:
     )
     feet_contact_without_cmd = RewTerm(
         func=mdp.feet_contact_without_cmd,
-        weight=0.4,
+        weight=1.0,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["leg_[l,r]6_link"])},
@@ -345,8 +345,8 @@ class RewardsCfg:
         },
     )
     flat_orientation_l2 = RewTerm(
-        func=mdp.flat_orientation_l2,
-        weight=-1.25,
+        func=mdp.flat_orientation_l2_lean,
+        weight=-2.5,
     )
 
     contact_force = RewTerm(

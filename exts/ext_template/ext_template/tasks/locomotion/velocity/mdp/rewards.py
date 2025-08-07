@@ -265,7 +265,7 @@ def stand_still_without_cmd(
     # reward *= (
     #     torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) < 0.1
     # )
-    reward *= torch.clamp(-asset.data.projected_gravity_b[:,2],0,0.7) / 0.7
+    reward *= torch.clamp(-asset.data.projected_gravity_b[:,2],0,0.95) / 0.95
     return reward
 
 def is_terminated(env: ManagerBasedRLEnv) -> torch.Tensor:
@@ -301,8 +301,27 @@ def no_feet_contact(env: ManagerBasedRLEnv,
     no_contact = contacts.sum(dim=1) == 0
     # 如果没有接触的接触点数量为0，并且速度指令小于0.5，则奖励为1.0，否则为0.0
     reward = torch.where(
-        torch.logical_and(no_contact, cmd < 0.5),
+        torch.logical_and(no_contact, cmd < 0.2),
         1.0,
         0.0,
     )
     return reward
+
+def flat_orientation_l2_lean(
+    env: ManagerBasedRLEnv, 
+    target_pitch: float = 0.05,  # 前倾目标角度（弧度）
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+    """Penalize non-flat base orientation with a target pitch angle using L2 squared kernel."""
+    # 提取机器人对象
+    asset: RigidObject = env.scene[asset_cfg.name]
+    
+    # 计算目标x分量（假设重力向量归一化，且前倾为绕y轴旋转）
+    target_x = torch.sin(torch.tensor(target_pitch, device=asset.device))
+    
+    # 当前重力投影的x/y分量
+    current_x = asset.data.projected_gravity_b[:, 0]
+    current_y = asset.data.projected_gravity_b[:, 1]
+    
+    # 计算误差的平方和（x方向偏移target_x，y方向保持为0）
+    return (current_x - target_x).pow(2) + current_y.pow(2)

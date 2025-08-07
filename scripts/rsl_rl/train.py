@@ -37,6 +37,7 @@ if args_cli.video:
 
 if (args_cli.use_proxy):
     import os
+    print("[INFO] Using proxy for wandb logging.")
     os.environ["HTTP_PROXY"] = "http://127.0.0.1:8889"
     os.environ["HTTPS_PROXY"] = "http://127.0.0.1:8889"
 

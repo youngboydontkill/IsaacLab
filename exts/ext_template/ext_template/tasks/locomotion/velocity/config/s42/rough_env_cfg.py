@@ -125,7 +125,7 @@ class CommandsCfg:
         rel_heading_envs=1.0,
         heading_command=True,
         heading_control_stiffness=0.5,
-        debug_vis=True,
+        debug_vis=False,
         ranges=mdp.UniformVelocityCommandCfg.Ranges(
             lin_vel_x=(-1.0, 1.0),
             lin_vel_y=(-0.5, 0.5),
@@ -297,7 +297,7 @@ class RewardsCfg:
 
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_clip,
-        weight=20.0,
+        weight=10.0,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg(
@@ -319,7 +319,7 @@ class RewardsCfg:
     )
     feet_contact_without_cmd = RewTerm(
         func=mdp.feet_contact_without_cmd,
-        weight=1.0,
+        weight=0.4,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["leg_[l,r]6_link"])},
@@ -346,7 +346,7 @@ class RewardsCfg:
     )
     flat_orientation_l2 = RewTerm(
         func=mdp.flat_orientation_l2_lean,
-        weight=-2.5,
+        weight=-1.25,
     )
 
     contact_force = RewTerm(
@@ -565,3 +565,7 @@ class KuavoS42RoughEnvCfg_PLAY(KuavoS42RoughEnvCfg):
 
         # remove random pushing event
         self.events.base_external_force_torque = None
+
+        self.commands.base_velocity.ranges.lin_vel_x = (1.0, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_y = (0, 0)
+        self.commands.base_velocity.ranges.ang_vel_z = (0, 0)

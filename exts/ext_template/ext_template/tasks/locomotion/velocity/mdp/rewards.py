@@ -59,7 +59,7 @@ def feet_air_time_clip(
     air_time = torch.clamp(air_time, max=threshold_max - threshold_min)
     reward = torch.sum(air_time, dim=1)
     # no reward for zero command
-    reward *= torch.norm(env.command_manager.get_command(command_name)[:, :3], dim=1) > 0.1
+    reward *= torch.norm(env.command_manager.get_command(command_name)[:, :3], dim=1) >= 0.1
     reward *= torch.clamp(-env.scene["robot"].data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
     return reward
 
@@ -265,7 +265,7 @@ def stand_still_without_cmd(
     # reward *= (
     #     torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) < 0.1
     # )
-    reward *= torch.clamp(-asset.data.projected_gravity_b[:,2],0,0.95) / 0.95
+    reward *= torch.clamp(-asset.data.projected_gravity_b[:,2],0,0.7) / 0.7
     return reward
 
 def is_terminated(env: ManagerBasedRLEnv) -> torch.Tensor:
@@ -301,7 +301,7 @@ def no_feet_contact(env: ManagerBasedRLEnv,
     no_contact = contacts.sum(dim=1) == 0
     # 如果没有接触的接触点数量为0，并且速度指令小于0.5，则奖励为1.0，否则为0.0
     reward = torch.where(
-        torch.logical_and(no_contact, cmd < 0.2),
+        torch.logical_and(no_contact, cmd < 0.1),
         1.0,
         0.0,
     )

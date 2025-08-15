@@ -268,9 +268,9 @@ def stand_still_without_cmd(
     reward *= torch.clamp(-asset.data.projected_gravity_b[:,2],0,0.7) / 0.7
     return reward
 
-def is_terminated(env: ManagerBasedRLEnv) -> torch.Tensor:
-    """Penalize terminated episodes that don't correspond to episodic timeouts."""
-    return env.reset_buf * ~env.time_out_buf
+# def is_terminated(env: ManagerBasedRLEnv) -> torch.Tensor:
+#     """Penalize terminated episodes that don't correspond to episodic timeouts."""
+#     return env.reset_buf * ~env.time_out_buf
 
 def feet_stumble(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
     # 是否踉跄

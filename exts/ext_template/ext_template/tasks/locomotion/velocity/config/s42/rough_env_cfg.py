@@ -293,7 +293,7 @@ class RewardsCfg:
         },
     )
     dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=-1.0)
-    # termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
+    # is_terminated = RewTerm(func=mdp.is_terminated, weight=-100.0)
 
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_clip,
@@ -345,7 +345,7 @@ class RewardsCfg:
         },
     )
     flat_orientation_l2 = RewTerm(
-        func=mdp.flat_orientation_l2_lean,
+        func=mdp.flat_orientation_l2,
         weight=-1.25,
     )
 

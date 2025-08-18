@@ -20,3 +20,6 @@ wandb/
 
 # nv_shadercache
 nv_shadercache/
+
+#isaacsim 
+.thumbs/

@@ -325,3 +325,65 @@ def flat_orientation_l2_lean(
     
     # 计算误差的平方和（x方向偏移target_x，y方向保持为0）
     return (current_x - target_x).pow(2) + current_y.pow(2)
+
+def illegal_dof_pos_barrier(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """惩罚串联关节位置，避免进入可行区域外"""
+    asset: Articulation = env.scene[asset_cfg.name]
+    # 获取两个ankle关节的位置
+    ankle_joint_pos = asset.data.joint_pos[:,asset_cfg.joint_ids]
+    # 凸可行域定义
+    vertices = torch.tensor(
+        [
+            [0.46,0],
+            [0,0.8],
+            [-0.5,0.8],
+            [-0.87,0.5],
+            [-0.87,-0.5],
+            [-0.5,-0.8],
+            [0,-0.8]
+        ], device=ankle_joint_pos.device
+    )
+    feasible_region = torch.tensor(
+        [
+            [0.87,0.5,-0.40],
+            [-1,0,-0.87],
+            [-0.63,-0.78,-0.94],
+            [0.87,-0.5,-0.4],
+            [0,-1,-0.8],
+            [-0.63,0.78,-0.94],
+            [0,1,-0.8]
+        ],device=ankle_joint_pos.device
+    )
+    # 构建不等式约束 Ax - b \leq 0 -> -log(b-Ax)
+    eps = 0.05 # 约束的松弛系数
+    left_side = -feasible_region[:,-1] - torch.matmul(ankle_joint_pos[:,:2], feasible_region[:,:-1].T)
+    right_side = -feasible_region[:,-1] - torch.matmul(ankle_joint_pos[:,2:],feasible_region[:,:-1].T)
+    # 不知道为什么会有并联解算后为nan的情况，这个应该直接terminate掉的，这里直接忽略掉可行域外的
+    left_mask =(left_side <-eps).any(dim=-1)
+    right_mask = (right_side <-eps).any(dim=-1)
+    outside = torch.logical_or(left_mask, right_mask).sum()
+    # if outside > 0:
+    #     print(f"Warning: {outside} envs are outside the feasible region, this should be terminated.")
+    left_side[left_mask] = 0.0
+    right_side[right_mask] = 0.0
+
+    # 使用log构建barrier function(默认是可行的)，并进行截断
+    max_penalty = 25.0
+    l_penalty = torch.clamp(
+        -torch.log(left_side + eps), min=0, max=max_penalty
+    )
+    r_penalty = torch.clamp(
+        -torch.log(right_side + eps), min=0, max=max_penalty
+    )
+
+    penalty = (l_penalty + r_penalty).sum(dim=1)
+    # lmask = l_penalty.isnan().sum(dim=1) > 0
+    # rmask = r_penalty.isnan().sum(dim=1) > 0
+    # print(ankle_joint_pos[lmask])
+    # print(ankle_joint_pos[rmask])
+    # print(l_penalty.isnan().sum(), r_penalty.isnan().sum())
+    # 返回惩罚项
+    return penalty 

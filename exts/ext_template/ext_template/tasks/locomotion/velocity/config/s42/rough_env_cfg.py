@@ -293,7 +293,7 @@ class RewardsCfg:
         },
     )
     dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=-1.0)
-    # is_terminated = RewTerm(func=mdp.is_terminated, weight=-100.0)
+    is_terminated = RewTerm(func=mdp.is_terminated, weight=-100.0)
 
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_clip,
@@ -382,6 +382,13 @@ class RewardsCfg:
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg(
                 "contact_forces", body_names="leg_[l,r]6_link")},
+    )
+    illegal_dof_barrier = RewTerm(
+        func=mdp.illegal_dof_pos_barrier,
+        weight=-0.1,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=["leg_l[5,6]_joint", "leg_r[5,6]_joint"])
+        },
     )
 
 

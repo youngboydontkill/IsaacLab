@@ -32,7 +32,9 @@ def feet_air_time(
     last_air_time = contact_sensor.data.last_air_time[:, sensor_cfg.body_ids]
     reward = torch.sum((last_air_time - threshold) * first_contact, dim=1)
     # no reward for zero command
-    reward *= torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) > 0.1
+    # reward *= torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) > 0.1
+    # no reward for not stepping
+    reward *= env.command_manager.get_command(command_name)[:, 3]
     return reward
 
 
@@ -59,7 +61,12 @@ def feet_air_time_clip(
     air_time = torch.clamp(air_time, max=threshold_max - threshold_min)
     reward = torch.sum(air_time, dim=1)
     # no reward for zero command
-    reward *= torch.norm(env.command_manager.get_command(command_name)[:, :3], dim=1) >= 0.1
+    # reward *= torch.norm(env.command_manager.get_command(command_name)[:, :3], dim=1) >= 0.1
+    # no reward for not stepping
+    # cmd = env.command_manager.get_command(command_name)[:, 3]
+    # not_stepping_indices = torch.where(cmd < 0.5)[0]
+    # print(f"Indices not stepping: {not_stepping_indices.shape[0]}")
+    reward *= env.command_manager.get_command(command_name)[:, 3]
     reward *= torch.clamp(-env.scene["robot"].data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
     return reward
 
@@ -84,7 +91,9 @@ def feet_air_time_positive_biped(
     reward = torch.min(torch.where(single_stance.unsqueeze(-1), in_mode_time, 0.0), dim=1)[0]
     reward = torch.clamp(reward, max=threshold)
     # no reward for zero command
-    reward *= torch.norm(env.command_manager.get_command(command_name)[:, :3], dim=1) > 0.01
+    # reward *= torch.norm(env.command_manager.get_command(command_name)[:, :3], dim=1) > 0.01
+    # no reward for not stepping
+    reward *= env.command_manager.get_command(command_name)[:, 3]
     reward *= torch.clamp(-env.scene["robot"].data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
     return reward
 
@@ -113,7 +122,9 @@ def feet_height_body(
     foot_z_target_error = torch.square(footpos_in_body_frame[:, :, 2] - target_height).view(env.num_envs, -1)
     foot_velocity_tanh = torch.tanh(tanh_mult * torch.norm(footvel_in_body_frame[:, :, :2], dim=2))
     reward = torch.sum(foot_z_target_error * foot_velocity_tanh, dim=1)
-    reward *= torch.linalg.norm(env.command_manager.get_command(command_name), dim=1) > 0.1
+    # reward *= torch.linalg.norm(env.command_manager.get_command(command_name), dim=1) > 0.1
+    # no reward for not stepping
+    reward *= env.command_manager.get_command(command_name)[:, 3]
     reward *= torch.clamp(-env.scene["robot"].data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
     return reward
 
@@ -147,8 +158,10 @@ def feet_contact_without_cmd(env: ManagerBasedRLEnv, command_name: str,sensor_cf
     # compute the reward
     contacts = contact_sensor.compute_first_contact(env.step_dt)[:, sensor_cfg.body_ids]
     reward = torch.sum(contacts, dim=-1).float()
-    cmd = torch.linalg.norm(env.command_manager.get_command(command_name)[:, :3],dim=1)
-    reward *= cmd< 0.01
+    # cmd = torch.linalg.norm(env.command_manager.get_command(command_name)[:, :3],dim=1)
+    # reward *= cmd< 0.01
+    # no reward for stepping
+    reward *= (env.command_manager.get_command(command_name)[:, 3] < 0.5)
     reward *= torch.clamp(-env.scene["robot"].data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
     return reward
 
@@ -289,7 +302,10 @@ def stand_still_without_cmd(
     body_vel = torch.linalg.norm(asset.data.root_lin_vel_b[:,:2], dim=1)
     diff_angle = asset.data.joint_pos[:, asset_cfg.joint_ids] - asset.data.default_joint_pos[:, asset_cfg.joint_ids]
     stance_reward = torch.linalg.norm(diff_angle, dim=1)
-    reward = torch.where(torch.logical_or(cmd > 0.01,body_vel > 0.5),0.0,stance_reward)
+    # reward = torch.where(torch.logical_or(cmd > 0.01,body_vel > 0.5),0.0,stance_reward)
+    # no reward for stepping
+    is_stepping = env.command_manager.get_command(command_name)[:, 3] > 0.5
+    reward = torch.where(torch.logical_or(is_stepping,body_vel > 0.5),0.0,stance_reward)
     # reward = torch.sum(torch.abs(diff_angle), dim=-1)
     # reward *= (
     #     torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) < 0.1
@@ -329,8 +345,10 @@ def no_feet_contact(env: ManagerBasedRLEnv,
     # 计算没有接触的接触点数量
     no_contact = contacts.sum(dim=1) == 0
     # 如果没有接触的接触点数量为0，并且速度指令小于0.5，则奖励为1.0，否则为0.0
+    # no reward for not stepping
+    not_stepping = env.command_manager.get_command(command_name)[:, 3] < 0.5
     reward = torch.where(
-        torch.logical_and(no_contact, cmd < 0.1),
+        torch.logical_and(no_contact, not_stepping),
         1.0,
         0.0,
     )

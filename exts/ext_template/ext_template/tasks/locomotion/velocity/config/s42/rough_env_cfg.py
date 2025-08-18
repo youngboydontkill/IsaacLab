@@ -307,6 +307,16 @@ class RewardsCfg:
             "threshold_max": 0.5
         },
     )
+    # feet_height_body = RewTerm(
+    #     func=mdp.feet_height_body,
+    #     weight=-1.0,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="leg_[l,r]6_link"),
+    #         "tanh_mult": 2.0,
+    #         "target_height": -0.3,
+    #         "command_name": "base_velocity",
+    #     },
+    # )
     feet_slide = RewTerm(
         func=mdp.feet_slide,
         weight=-0.1,

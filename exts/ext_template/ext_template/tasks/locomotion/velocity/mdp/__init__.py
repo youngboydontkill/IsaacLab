@@ -8,3 +8,8 @@ from .observations import *  # noqa: F401, F403
 from .rewards import *  # noqa: F401, F403
 from .terminations import *  # noqa: F401, F403
 from .velocity_command import *
+# for hugwbc 
+from .hugwbc_command import *
+from .hugwbc_observations import *
+from .hugwbc_actions import *
+

@@ -55,122 +55,7 @@ from isaaclab_rl.rsl_rl import (
 import ext_template.tasks  # noqa: F401
 
 import copy
-
-
-def export_policy_as_onnx_s42(
-    actor_critic: object, path: str, normalizer: object | None = None, filename="policy.onnx", verbose=False
-):
-    """Export policy into a Torch ONNX file.
-
-    Args:
-        actor_critic: The actor-critic torch module.
-        normalizer: The empirical normalizer module. If None, Identity is used.
-        path: The path to the saving directory.
-        filename: The name of exported ONNX file. Defaults to "policy.onnx".
-        verbose: Whether to print the model summary. Defaults to False.
-    """
-    if not os.path.exists(path):
-        os.makedirs(path, exist_ok=True)
-    policy_exporter = _OnnxPolicyExporter(actor_critic, normalizer, verbose)
-    policy_exporter.export(path, filename)
-
-
-class _OnnxPolicyExporter(torch.nn.Module):
-    """Exporter of actor-critic into ONNX file."""
-
-    def __init__(self, actor_critic, normalizer=None, verbose=False):
-        super().__init__()
-        self.verbose = verbose
-        self.actor = copy.deepcopy(actor_critic.actor)
-        self.is_recurrent = actor_critic.is_recurrent
-        if self.is_recurrent:
-            self.rnn = copy.deepcopy(actor_critic.memory_a.rnn)
-            self.rnn.cpu()
-            self.forward = self.forward_lstm
-        # copy normalizer if exists
-        if normalizer:
-            self.normalizer = copy.deepcopy(normalizer)
-        else:
-            self.normalizer = torch.nn.Identity()
-
-        singleObs = {
-            "base_ang_vel":[0,3],
-            "gravity":[3,6],
-            "cmd":[6,9],
-            "joint_pos":[9,26+9],
-            "joint_vel":[26+9,26+26+9],
-            "action":[26+26+9,26+26+26+9]
-        }
-        single_gym2lab = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 21,
-                        28, 10, 16, 22, 29, 11, 17, 23, 30, 12,
-                        18, 24, 31, 13, 19, 25, 32, 14, 20, 26,
-                        33, 27, 34, 35, 41, 47, 54, 36, 42, 48,
-                        55, 37, 43, 49, 56, 38, 44, 50, 57, 39,
-                        45, 51, 58, 40, 46, 52, 59, 53, 60, 61,
-                        67, 73, 80, 62, 68, 74, 81, 63, 69, 75,
-                        82, 64, 70, 76, 83, 65, 71, 77, 84, 66,
-                        72, 78, 85, 79, 86])
-        history = 5
-        gym2lab = [single_gym2lab + i * single_gym2lab.shape[0] for i in range(history)]
-        gym2lab = np.array(gym2lab).reshape(history,-1)  # 此时每行是一个
-        # 然后需要根据singleobs的chunk重新调整顺序
-        self.gym2lab = np.array([])
-        for k in singleObs:
-            start_idx = singleObs[k][0]
-            end_idx = singleObs[k][1]
-            for i in range(history):
-                obs_i = gym2lab[i]
-                # end_idx = end_idx + singleObs[k]
-                # concate 
-                self.gym2lab = np.concatenate((self.gym2lab, obs_i[start_idx:end_idx]))
-                # self.gym2lab.append(obs_i[start_idx:end_idx])
-                # start_idx = end_idx
-        print(self.gym2lab)
-        self.gym2lab = np.array(self.gym2lab).reshape(-1)
-        
-        self.lab2gym = [0, 4, 8, 12, 16, 20, 1, 5, 9, 13, 17, 21, 2, 6, 10, 14, 18, 22, 24, 3, 7, 11, 15, 19, 23, 25]
-
-    def forward_lstm(self, x_in, h_in, c_in):
-        x_in = self.normalizer(x_in)
-        x, (h, c) = self.rnn(x_in.unsqueeze(0), (h_in, c_in))
-        x = x.squeeze(0)
-        return self.actor(x[:, self.gym2lab])[:, self.lab2gym], h, c
-
-    def forward(self, x):
-        return self.actor(self.normalizer(x[:, self.gym2lab]))[:, self.lab2gym]
-
-    def export(self, path, filename):
-        self.to("cpu")
-        if self.is_recurrent:
-            obs = torch.zeros(1, self.rnn.input_size)
-            h_in = torch.zeros(self.rnn.num_layers, 1, self.rnn.hidden_size)
-            c_in = torch.zeros(self.rnn.num_layers, 1, self.rnn.hidden_size)
-            actions, h_out, c_out = self(obs, h_in, c_in)
-            torch.onnx.export(
-                self,
-                (obs, h_in, c_in),
-                os.path.join(path, filename),
-                export_params=True,
-                opset_version=11,
-                verbose=self.verbose,
-                input_names=["obs", "h_in", "c_in"],
-                output_names=["actions", "h_out", "c_out"],
-                dynamic_axes={},
-            )
-        else:
-            obs = torch.zeros(1, self.actor[0].in_features)
-            torch.onnx.export(
-                self,
-                obs,
-                os.path.join(path, filename),
-                export_params=True,
-                opset_version=11,
-                verbose=self.verbose,
-                input_names=["obs"],
-                output_names=["actions"],
-                dynamic_axes={},
-            )
-
+from .exporter import export_policy_as_onnx_s42
 
 def main():
     """Play with RSL-RL agent."""
@@ -218,16 +103,15 @@ def main():
 
     # export policy to onnx/jit
     export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
-    export_policy_as_jit(
-        ppo_runner.alg.policy, ppo_runner.obs_normalizer, path=export_model_dir, filename="policy.pt"
-    )
-    export_policy_as_onnx(
-        ppo_runner.alg.policy, normalizer=ppo_runner.obs_normalizer, path=export_model_dir, filename="policy.onnx"
-    )
+    # export_policy_as_jit(
+    #     ppo_runner.alg.policy, ppo_runner.obs_normalizer, path=export_model_dir, filename="policy.pt"
+    # )
+    # export_policy_as_onnx(
+    #     ppo_runner.alg.policy, normalizer=ppo_runner.obs_normalizer, path=export_model_dir, filename="policy.onnx"
+    # )
     export_policy_as_onnx_s42(
-        ppo_runner.alg.policy, normalizer=ppo_runner.obs_normalizer, path=export_model_dir, filename="policy_s45.onnx"
+        ppo_runner.alg.policy,obs=agent_cfg.policy_obs_keys,normalizer=ppo_runner.obs_normalizer, path=export_model_dir, filename="policy_s45.onnx"
     )
-    # man
     # asset = env.scene["robot"]
     # print(asset.data.joint_names)
     # reset environment

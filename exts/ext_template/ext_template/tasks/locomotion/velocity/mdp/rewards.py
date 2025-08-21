@@ -15,7 +15,8 @@ if TYPE_CHECKING:
 
 
 def feet_air_time(
-    env: ManagerBasedRLEnv, command_name: str, sensor_cfg: SceneEntityCfg, threshold: float
+    env: ManagerBasedRLEnv, command_name: str, sensor_cfg: SceneEntityCfg, threshold: float,
+    use_stance_mask: bool = True
 ) -> torch.Tensor:
     """Reward long steps taken by the feet using L2-kernel.
 
@@ -31,17 +32,20 @@ def feet_air_time(
     first_contact = contact_sensor.compute_first_contact(env.step_dt)[:, sensor_cfg.body_ids]
     last_air_time = contact_sensor.data.last_air_time[:, sensor_cfg.body_ids]
     reward = torch.sum((last_air_time - threshold) * first_contact, dim=1)
-    # no reward for zero command
-    # reward *= torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) > 0.1
-    # no reward for not stepping
-    reward *= env.command_manager.get_command(command_name)[:, 3]
+    if (not use_stance_mask):
+        # no reward for zero command
+        reward *= torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) > 0.1
+    else:
+        # no reward for not stepping
+        reward *= env.command_manager.get_command(command_name)[:, 3]
     return reward
 
 
 def feet_air_time_clip(
     env: ManagerBasedRLEnv, command_name: str, sensor_cfg: SceneEntityCfg,
     threshold_min: float,
-    threshold_max: float
+    threshold_max: float,
+    use_stance_mask: bool = True
 ) -> torch.Tensor:
     """Reward long steps taken by the feet using L2-kernel.
 
@@ -60,19 +64,22 @@ def feet_air_time_clip(
     air_time = (last_air_time - threshold_min) * first_contact
     air_time = torch.clamp(air_time, max=threshold_max - threshold_min)
     reward = torch.sum(air_time, dim=1)
-    # no reward for zero command
-    # reward *= torch.norm(env.command_manager.get_command(command_name)[:, :3], dim=1) >= 0.1
-    # no reward for not stepping
-    # cmd = env.command_manager.get_command(command_name)[:, 3]
-    # not_stepping_indices = torch.where(cmd < 0.5)[0]
-    # print(f"Indices not stepping: {not_stepping_indices.shape[0]}")
-    reward *= env.command_manager.get_command(command_name)[:, 3]
+    if (not use_stance_mask):
+        # no reward for zero command
+        reward *= torch.norm(env.command_manager.get_command(command_name)[:, :3], dim=1) >= 0.1
+    else:
+        # no reward for not stepping
+        # cmd = env.command_manager.get_command(command_name)[:, 3]
+        # not_stepping_indices = torch.where(cmd < 0.5)[0]
+        # print(f"Indices not stepping: {not_stepping_indices.shape[0]}")
+        reward *= env.command_manager.get_command(command_name)[:, 3]
     reward *= torch.clamp(-env.scene["robot"].data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
     return reward
 
 
 def feet_air_time_positive_biped(
-    env: ManagerBasedRLEnv, command_name: str, threshold: float, sensor_cfg: SceneEntityCfg
+    env: ManagerBasedRLEnv, command_name: str, threshold: float, sensor_cfg: SceneEntityCfg,
+    use_stance_mask: bool = True
 ) -> torch.Tensor:
     """Reward long steps taken by the feet for bipeds.
 
@@ -90,10 +97,12 @@ def feet_air_time_positive_biped(
     single_stance = torch.sum(in_contact.int(), dim=1) == 1
     reward = torch.min(torch.where(single_stance.unsqueeze(-1), in_mode_time, 0.0), dim=1)[0]
     reward = torch.clamp(reward, max=threshold)
-    # no reward for zero command
-    # reward *= torch.norm(env.command_manager.get_command(command_name)[:, :3], dim=1) > 0.01
-    # no reward for not stepping
-    reward *= env.command_manager.get_command(command_name)[:, 3]
+    if (not use_stance_mask):
+        # no reward for zero command
+        reward *= torch.norm(env.command_manager.get_command(command_name)[:, :3], dim=1) > 0.01
+    else :
+        # no reward for not stepping
+        reward *= env.command_manager.get_command(command_name)[:, 3]
     reward *= torch.clamp(-env.scene["robot"].data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
     return reward
 
@@ -103,6 +112,7 @@ def feet_height_body(
     asset_cfg: SceneEntityCfg,
     target_height: float,
     tanh_mult: float,
+    use_stance_mask: bool = False,
 ) -> torch.Tensor:
     """Reward the swinging feet for clearing a specified height off the ground"""
     asset: RigidObject = env.scene[asset_cfg.name]
@@ -122,9 +132,11 @@ def feet_height_body(
     foot_z_target_error = torch.square(footpos_in_body_frame[:, :, 2] - target_height).view(env.num_envs, -1)
     foot_velocity_tanh = torch.tanh(tanh_mult * torch.norm(footvel_in_body_frame[:, :, :2], dim=2))
     reward = torch.sum(foot_z_target_error * foot_velocity_tanh, dim=1)
-    # reward *= torch.linalg.norm(env.command_manager.get_command(command_name), dim=1) > 0.1
-    # no reward for not stepping
-    reward *= env.command_manager.get_command(command_name)[:, 3]
+    if (not use_stance_mask):
+        reward *= torch.linalg.norm(env.command_manager.get_command(command_name), dim=1) > 0.1
+    else :
+        # no reward for not stepping
+        reward *= env.command_manager.get_command(command_name)[:, 3]
     reward *= torch.clamp(-env.scene["robot"].data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
     return reward
 
@@ -151,17 +163,20 @@ def feet_slide(
     reward = torch.sum(body_vel.norm(dim=-1) * contacts, dim=1)
     return reward
 
-def feet_contact_without_cmd(env: ManagerBasedRLEnv, command_name: str,sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+def feet_contact_without_cmd(env: ManagerBasedRLEnv, command_name: str,sensor_cfg: SceneEntityCfg,
+                             use_stance_mask: bool = True) -> torch.Tensor:
     """Reward feet contact"""
     # extract the used quantities (to enable type-hinting)
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
     # compute the reward
     contacts = contact_sensor.compute_first_contact(env.step_dt)[:, sensor_cfg.body_ids]
     reward = torch.sum(contacts, dim=-1).float()
-    # cmd = torch.linalg.norm(env.command_manager.get_command(command_name)[:, :3],dim=1)
-    # reward *= cmd< 0.01
-    # no reward for stepping
-    reward *= (env.command_manager.get_command(command_name)[:, 3] < 0.5)
+    if (not use_stance_mask):
+        cmd = torch.linalg.norm(env.command_manager.get_command(command_name)[:, :3],dim=1)
+        reward *= cmd< 0.01
+    else:
+        # no reward for stepping
+        reward *= (env.command_manager.get_command(command_name)[:, 3] < 0.5)
     reward *= torch.clamp(-env.scene["robot"].data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
     return reward
 
@@ -295,27 +310,26 @@ def contact_forces(env: ManagerBasedRLEnv, threshold: float, sensor_cfg: SceneEn
 def stand_still_without_cmd(
     env: ManagerBasedRLEnv,
     command_name: str,
-    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    use_stance_mask: bool = True,
 ) -> torch.Tensor:
     asset: Articulation = env.scene[asset_cfg.name]
     cmd = torch.linalg.norm(env.command_manager.get_command(command_name)[:, :3],dim=1)
     body_vel = torch.linalg.norm(asset.data.root_lin_vel_b[:,:2], dim=1)
     diff_angle = asset.data.joint_pos[:, asset_cfg.joint_ids] - asset.data.default_joint_pos[:, asset_cfg.joint_ids]
     stance_reward = torch.linalg.norm(diff_angle, dim=1)
-    # reward = torch.where(torch.logical_or(cmd > 0.01,body_vel > 0.5),0.0,stance_reward)
-    # no reward for stepping
-    is_stepping = env.command_manager.get_command(command_name)[:, 3] > 0.5
-    reward = torch.where(torch.logical_or(is_stepping,body_vel > 0.5),0.0,stance_reward)
+    if (not use_stance_mask):
+        reward = torch.where(torch.logical_or(cmd > 0.01,body_vel > 0.5),0.0,stance_reward)
+    else:
+        # no reward for stepping
+        is_stepping = env.command_manager.get_command(command_name)[:, 3] > 0.5
+        reward = torch.where(torch.logical_or(is_stepping,body_vel > 0.5),0.0,stance_reward)
     # reward = torch.sum(torch.abs(diff_angle), dim=-1)
     # reward *= (
     #     torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) < 0.1
     # )
     reward *= torch.clamp(-asset.data.projected_gravity_b[:,2],0,0.7) / 0.7
     return reward
-
-# def is_terminated(env: ManagerBasedRLEnv) -> torch.Tensor:
-#     """Penalize terminated episodes that don't correspond to episodic timeouts."""
-#     return env.reset_buf * ~env.time_out_buf
 
 def feet_stumble(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
     # 是否踉跄
@@ -330,7 +344,8 @@ def feet_stumble(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg) -> torch.Te
 def no_feet_contact(env: ManagerBasedRLEnv, 
                     command_name: str, 
                     sensor_cfg: SceneEntityCfg, 
-                    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+                    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+                    use_stance_mask:bool = True) -> torch.Tensor:
     """
     加入这一项是为了提升在有速度指令情况下的响应速度
     Penalize no feet contact
@@ -345,14 +360,22 @@ def no_feet_contact(env: ManagerBasedRLEnv,
     # 计算没有接触的接触点数量
     no_contact = contacts.sum(dim=1) == 0
     # 如果没有接触的接触点数量为0，并且速度指令小于0.5，则奖励为1.0，否则为0.0
-    # no reward for not stepping
-    not_stepping = env.command_manager.get_command(command_name)[:, 3] < 0.5
-    reward = torch.where(
-        torch.logical_and(no_contact, not_stepping),
-        1.0,
-        0.0,
-    )
-    return reward
+    if (not use_stance_mask):
+        reward = torch.where(
+            torch.logical_and(no_contact, cmd<0.2),
+            1.0,
+            0.0,
+        )
+        return reward
+    else:
+        # no reward for not stepping
+        not_stepping = env.command_manager.get_command(command_name)[:, 3] < 0.5
+        reward = torch.where(
+            torch.logical_and(no_contact, not_stepping),
+            1.0,
+            0.0,
+        )
+        return reward
 
 def flat_orientation_l2_lean(
     env: ManagerBasedRLEnv, 

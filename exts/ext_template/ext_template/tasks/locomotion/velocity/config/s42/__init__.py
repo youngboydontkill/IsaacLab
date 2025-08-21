@@ -49,6 +49,46 @@ gym.register(
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:KuavoS42RoughPPORunnerCfg",
     },
 )
+# for hug wbc
+gym.register(
+    id="Legged-Isaac-Velocity-Rough-HugWBC-Kuavo-S42-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.hugwbc_env_cfg:KuavoS42HugWBCEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:KuavoS42RoughHugWBCPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="Legged-Isaac-Velocity-Rough-HugWBC-Kuavo-S42-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.hugwbc_env_cfg:KuavoS42HugWBCEnvCfg_PLAY",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:KuavoS42RoughHugWBCPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="Legged-Isaac-Velocity-Flat-HugWBC-Kuavo-S42-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.hugwbc_env_cfg:KuavoS42FlatHugWBCEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:KuavoS42FlatHugWBCPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="Legged-Isaac-Velocity-Flat-HugWBC-Kuavo-S42-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.hugwbc_env_cfg:KuavoS42FlatHugWBCEnvCfg_PLAY",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:KuavoS42FlatHugWBCPPORunnerCfg",
+    },
+)
 
 gym.register(
     id="Legged-Isaac-Velocity-Flat-Kuavo-S42-DreamWaq-v0",

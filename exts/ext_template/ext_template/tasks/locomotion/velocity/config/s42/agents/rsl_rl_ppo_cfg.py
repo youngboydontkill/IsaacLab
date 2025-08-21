@@ -26,6 +26,8 @@ singleObs = {
             "base_ang_vel":[[0, 1, 2],[-1,1,-1]],
             "gravity":[[0,1,2],[1,-1,1]],
             "cmd":[[0,1,2,3],[1, -1, -1, 1]],
+            "cmd_vel":[[0,1,2],[1, -1, -1]],
+            "hugwbc_cmd":[[0],[1]],
             "joint_pos":[[1,  0,  3,  2,  5,  4,  7,  6,  9,  8, 11, 10,
                             13, 12, 15, 14, 17,16, 19, 18, 21, 20, 23, 22, 25, 24],
                         [-1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1]],
@@ -41,6 +43,8 @@ singleCriticObs = {
             "base_ang_vel":[[0, 1, 2],[-1,1,-1]],
             "gravity":[[0,1,2],[1,-1,1]],
             "cmd":[[0,1,2,3],[1, -1, -1, 1]],
+            "cmd_vel":[[0,1,2],[1, -1, -1]],
+            "hugwbc_cmd":[[0],[1]],
             "joint_pos":[[1,  0,  3,  2,  5,  4,  7,  6,  9,  8, 11, 10,
                             13, 12, 15, 14, 17,16, 19, 18, 21, 20, 23, 22, 25, 24],
                         [-1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, 1, 1]],
@@ -209,6 +213,72 @@ class KuavoS42FlatPPORunnerCfg(KuavoS42RoughPPORunnerCfg):
         self.history_len = 5 
         self.policy_obs_keys = ["base_ang_vel","gravity","cmd","joint_pos","joint_vel","action"]
         self.critic_obs_keys = ["base_ang_vel","gravity","cmd","joint_pos","joint_vel","action",
+            "base_lin_vel","joint_torques","joint_accs","feet_lin_vel","feet_contact_force",
+            "base_mass_rel","rigid_body_material","base_com","action_delay","push_force","push_torque",
+            "feet_heights","feet_air_times"]
+        # step 2 : 设置好对称性增强的规则
+        policy_obs_mirror_indices, policy_obs_mirror_signs = self._process_policy_mirror_obs()
+        critic_obs_mirror_indices, critic_obs_mirror_signs = self._process_critic_mirror_obs()
+        global POLICY_MIRROR_INDICES, POLICY_MIRROR_SIGNS
+        global CRITIC_MIRROR_INDICES, CRITIC_MIRROR_SIGNS
+        POLICY_MIRROR_INDICES = policy_obs_mirror_indices
+        POLICY_MIRROR_SIGNS = policy_obs_mirror_signs
+        CRITIC_MIRROR_INDICES = critic_obs_mirror_indices
+        CRITIC_MIRROR_SIGNS = critic_obs_mirror_signs
+
+        self.algorithm.symmetry_cfg = RslRlSymmetryCfg(
+            use_data_augmentation=True, 
+            use_mirror_loss=True,
+            mirror_loss_coeff=1.0, 
+            data_augmentation_func=data_augmentation
+        )
+    
+@configclass
+class KuavoS42RoughHugWBCPPORunnerCfg(KuavoS42RoughPPORunnerCfg):
+    def __post_init__(self):
+        super().__post_init__()
+
+        self.max_iterations = 10000
+        self.experiment_name = "Kuavo/s42/rough/hugwbc"
+
+        # 默认是没有对称性增强的，需要手动在这里设置以方便支持不同policy的obs 
+        # step 1 : 设置好history length和观测的key
+        self.history_len = 5 
+        self.policy_obs_keys = ["base_ang_vel","gravity","cmd_vel","hugwbc_cmd","joint_pos","joint_vel","action"]
+        self.critic_obs_keys = ["base_ang_vel","gravity","cmd_vel","hugwbc_cmd","joint_pos","joint_vel","action",
+            "base_lin_vel","height_scan","joint_torques","joint_accs","feet_lin_vel","feet_contact_force",
+            "base_mass_rel","rigid_body_material","base_com","action_delay","push_force","push_torque",
+            "feet_heights","feet_air_times"]
+        # step 2 : 设置好对称性增强的规则
+        policy_obs_mirror_indices, policy_obs_mirror_signs = self._process_policy_mirror_obs()
+        critic_obs_mirror_indices, critic_obs_mirror_signs = self._process_critic_mirror_obs()
+        global POLICY_MIRROR_INDICES, POLICY_MIRROR_SIGNS
+        global CRITIC_MIRROR_INDICES, CRITIC_MIRROR_SIGNS
+        POLICY_MIRROR_INDICES = policy_obs_mirror_indices
+        POLICY_MIRROR_SIGNS = policy_obs_mirror_signs
+        CRITIC_MIRROR_INDICES = critic_obs_mirror_indices
+        CRITIC_MIRROR_SIGNS = critic_obs_mirror_signs
+
+        self.algorithm.symmetry_cfg = RslRlSymmetryCfg(
+            use_data_augmentation=True, 
+            use_mirror_loss=True,
+            mirror_loss_coeff=1.0, 
+            data_augmentation_func=data_augmentation
+        )
+
+@configclass
+class KuavoS42FlatHugWBCPPORunnerCfg(KuavoS42RoughPPORunnerCfg):
+    def __post_init__(self):
+        super().__post_init__()
+
+        self.max_iterations = 10000
+        self.experiment_name = "Kuavo/s42/flat/hugwbc"
+
+        # 默认是没有对称性增强的，需要手动在这里设置以方便支持不同policy的obs 
+        # step 1 : 设置好history length和观测的key
+        self.history_len = 5 
+        self.policy_obs_keys = ["base_ang_vel","gravity","cmd_vel","hugwbc_cmd","joint_pos","joint_vel","action"]
+        self.critic_obs_keys = ["base_ang_vel","gravity","cmd_vel","hugwbc_cmd","joint_pos","joint_vel","action",
             "base_lin_vel","joint_torques","joint_accs","feet_lin_vel","feet_contact_force",
             "base_mass_rel","rigid_body_material","base_com","action_delay","push_force","push_torque",
             "feet_heights","feet_air_times"]

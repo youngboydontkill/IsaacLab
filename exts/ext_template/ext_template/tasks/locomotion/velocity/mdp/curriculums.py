@@ -69,3 +69,56 @@ def terrain_levels_vel(
     terrain.update_env_origins(env_ids, move_up, move_down)
     # return the mean terrain level
     return torch.mean(terrain.terrain_levels.float())
+
+
+# for HugWBC arm noise curriculum level 
+def hugwbc_distribuate_levels(
+    env: ManagerBasedRLEnv,
+    env_ids: Sequence[int],
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    # get command 
+    asset: Articulation = env.scene[asset_cfg.name]
+    reward: RewardManager = env.reward_manager
+    hugwbc_cmd_term = env.command_manager.get_term("hugwbc_cmd")
+    external_act = hugwbc_cmd_term.command
+    # external_act = env.commnad_manager.get_command("hugwbc_cmd")
+    disturb_rad_curriculum = external_act[:,-2]
+    noise_disturb_mask = external_act[env_ids,-1]
+
+    noise_env_ids = env_ids[noise_disturb_mask.bool()]
+    if (noise_env_ids.shape[0] == 0):
+        return 
+    
+    lin_track_reward_sum = (
+        reward._episode_sums["track_lin_vel_xy_exp"][noise_env_ids] / env.max_episode_length_s
+    )
+    lin_track_reward_idx = reward._term_names.index("track_lin_vel_xy_exp")
+    lin_track_reward_weight = reward._term_cfgs[lin_track_reward_idx].weight
+    ang_track_reward_sum = (
+        reward._episode_sums["track_ang_vel_z_exp"][noise_env_ids] / env.max_episode_length_s
+    )
+    ang_track_reward_idx = reward._term_names.index("track_ang_vel_z_exp")
+    ang_track_reward_weight = reward._term_cfgs[ang_track_reward_idx].weight
+    # robots that walked far enough progress to harder terrains
+
+    # here to set hugwbc cmd term curriculum level 
+    move_up = (
+        (lin_track_reward_sum > lin_track_reward_weight * 0.7)
+        & (ang_track_reward_sum > ang_track_reward_weight * 0.7)
+    )
+    # robots that walked less than half of their required distance go to simpler terrains
+    move_down = ((lin_track_reward_sum < lin_track_reward_weight * 0.4) | (
+        ang_track_reward_sum < ang_track_reward_weight * 0.4))
+    # move_down *= ~move_up
+    disturb_rad_curriculum[noise_env_ids] = torch.where(
+        move_down,
+        (disturb_rad_curriculum[noise_env_ids] - 0.05).clip(min=0),
+        torch.where(
+            move_up,
+            (disturb_rad_curriculum[noise_env_ids] + 0.05).clip(max=hugwbc_cmd_term.cfg.max_curriculum),
+            disturb_rad_curriculum[noise_env_ids])
+    ) 
+    # set to command :
+    hugwbc_cmd_term.disturb_rad_curriculum = disturb_rad_curriculum
+    return torch.mean(disturb_rad_curriculum.float())

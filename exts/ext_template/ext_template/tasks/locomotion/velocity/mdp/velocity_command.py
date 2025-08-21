@@ -103,3 +103,5 @@ class UniformSteppingVelocityCommandCfg(mdp.UniformVelocityCommandCfg):
 
     rel_stepping_envs: float = 0.0
     """The sampled probability of environments that should be stepping. Defaults to 0.0."""
+
+

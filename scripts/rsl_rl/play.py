@@ -55,7 +55,8 @@ from isaaclab_rl.rsl_rl import (
 import ext_template.tasks  # noqa: F401
 
 import copy
-from .exporter import export_policy_as_onnx_s42
+from exporter import export_policy_as_onnx_s42,generate_gym_obs_indices,OBSTERMLAB2GYM
+
 
 def main():
     """Play with RSL-RL agent."""
@@ -112,6 +113,11 @@ def main():
     export_policy_as_onnx_s42(
         ppo_runner.alg.policy,obs=agent_cfg.policy_obs_keys,normalizer=ppo_runner.obs_normalizer, path=export_model_dir, filename="policy_s45.onnx"
     )
+    # 生成lab转gym的policy观测索引
+    history_len = agent_cfg.history_len
+    policy_lab2gym = generate_gym_obs_indices(agent_cfg.policy_obs_keys,agent_cfg.history_len)
+    action_lab2gym = np.array(OBSTERMLAB2GYM["action"])
+
     # asset = env.scene["robot"]
     # print(asset.data.joint_names)
     # reset environment
@@ -127,8 +133,12 @@ def main():
         with torch.inference_mode():
             # agent stepping
             actions = policy(obs)
-            record_obs.append(obs.cpu().detach().numpy())
-            record_action.append(actions.cpu().detach().numpy())
+            obs_np = obs.cpu().detach().numpy()
+            action_np = actions.cpu().detach().numpy()
+            obs_i = obs_np[:,policy_lab2gym]
+            act_i = action_np[action_lab2gym]
+            record_obs.append(obs_i)
+            record_action.append(act_i)
             # print(record_obs[-1][0,:15])
             # if (len(record_obs) > 1):
                 # print(record_obs[-1][0,0:6] - record_obs[-2][0,3:9])
@@ -159,7 +169,8 @@ def main():
     robot_id = 0
     record_obs_np = np.array(record_obs)
     record_action_np = np.array(record_action)
-    record_robot_obs = record_obs_np[:, robot_id, :]
+    n_single_obs = int(record_obs_np.shape[-1] / history_len)
+    record_robot_obs = record_obs_np[:, robot_id, -n_single_obs:]  # lastest obs 
     record_robot_action = record_action_np[:, robot_id, :]
     vx = record_robot_obs[:, 0]
     vy = record_robot_obs[:, 1]

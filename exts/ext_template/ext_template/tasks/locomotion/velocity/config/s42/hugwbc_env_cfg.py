@@ -65,7 +65,8 @@ class CommandsCfg:
     )
     hugwbc_cmd = mdp.HugWBCCommandCfg(
         asset_name="robot",
-        resampling_time_range=(5.0, 5.0)
+        resampling_time_range=(5.0, 5.0),
+        debug_vis=True,
     )
 
 
@@ -199,10 +200,10 @@ class RewardsCfg:
     # -- penalties
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-0.2)
     ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
-    dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
-    dof_power_l2 = RewTerm(func=mdp.joint_power_l2, weight=-2.0e-5)
+    dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2_wbc, weight=-2.5e-7)
+    dof_power_l2 = RewTerm(func=mdp.joint_power_l2_wbc, weight=-2.0e-5)
     dof_torques_l2 = RewTerm(
-        func=mdp.joint_torques_l2,
+        func=mdp.joint_torques_l2_wbc,
         weight=-1.0e-5,
         params={
             "asset_cfg": SceneEntityCfg(
@@ -215,8 +216,8 @@ class RewardsCfg:
         weight=-1.0e-5,
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=["leg_[l,r]6_joint"])},
     )
-    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.005)
-    action_smoothness_l2 = RewTerm(func=mdp.action_smoothness_l2, weight=-0.01)
+    action_rate_l2 = RewTerm(func=mdp.action_rate_l2_wbc, weight=-0.005)
+    action_smoothness_l2 = RewTerm(func=mdp.action_smoothness_l2_wbc, weight=-0.01)
 
     undesired_contacts = RewTerm(
         func=mdp.undesired_contacts,
@@ -273,7 +274,7 @@ class RewardsCfg:
         },
     )
     joint_deviation_arms = RewTerm(
-        func=mdp.joint_deviation_l1,
+        func=mdp.joint_deviation_arms_wbc,
         weight=-0.1,
         params={
             "asset_cfg": SceneEntityCfg(
@@ -302,7 +303,7 @@ class RewardsCfg:
     )
 
     stand_still_without_cmd = RewTerm(
-        func=mdp.stand_still_without_cmd,
+        func=mdp.stand_still_without_cmd_wbc,
         weight=-1.0,
         params={
             "command_name": "base_velocity",
@@ -581,3 +582,6 @@ class KuavoS42FlatHugWBCEnvCfg_PLAY(KuavoS42FlatHugWBCEnvCfg):
         self.commands.base_velocity.ranges.lin_vel_x = (1.0, 1.0)
         self.commands.base_velocity.ranges.lin_vel_y = (0, 0)
         self.commands.base_velocity.ranges.ang_vel_z = (0, 0)
+        # 都乱动
+        self.commands.hugwbc_cmd.disturb_rad_curriculum = False
+        self.commands.hugwbc_cmd.noise_curriculum_ratio = 1.0

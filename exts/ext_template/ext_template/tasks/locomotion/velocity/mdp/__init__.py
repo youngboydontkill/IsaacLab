@@ -12,4 +12,5 @@ from .velocity_command import *
 from .hugwbc_command import *
 from .hugwbc_observations import *
 from .hugwbc_actions import *
+from .hugwbc_rewards import *
 

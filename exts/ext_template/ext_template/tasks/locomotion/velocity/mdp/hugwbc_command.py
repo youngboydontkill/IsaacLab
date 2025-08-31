@@ -16,12 +16,24 @@ import omni.log
 
 import isaaclab.utils.math as math_utils
 from isaaclab.assets import Articulation
+from isaaclab.markers import VisualizationMarkersCfg
 from isaaclab.markers import VisualizationMarkers
+import isaaclab.sim as sim_utils
 
 import ext_template.tasks.locomotion.velocity.mdp as mdp
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedEnv, ManagerBasedRLEnv
+
+# for visualization 
+HUGWBC_FLAG_MARKER_CFG = VisualizationMarkersCfg(
+    markers={
+        "hugwbc": sim_utils.SphereCfg(
+            radius=0.1,
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 1.0, 1.0)),
+        ),
+    }
+)
 
 
 class HugWBCCommand(mdp.CommandTerm):
@@ -79,11 +91,32 @@ class HugWBCCommand(mdp.CommandTerm):
         return self.commands
 
     def _set_debug_vis_impl(self, debug_vis: bool):
-        pass 
+        # set visibility of markers
+        # note: parent only deals with callbacks. not their visibility
+        if debug_vis:
+            # create markers if necessary for the first tome
+            if not hasattr(self, "hug_wbc_visualizer"):
+                # -- goal
+                self.hug_wbc_visualizer = VisualizationMarkers(self.cfg.hug_wbc_vis_cfg)
+            # set their visibility to true
+            self.hug_wbc_visualizer.set_visibility(True)
+        else:
+            if hasattr(self, "hug_wbc_visualizer"):
+                self.hug_wbc_visualizer.set_visibility(False)
 
     def _debug_vis_callback(self, event):
-        pass 
-
+        # check if robot is initialized
+        # note: this is needed in-case the robot is de-initialized. we can't access the data
+        if not self.robot.is_initialized:
+            return
+        # get marker location
+        # -- base state
+        base_pos_w = self.robot.data.root_pos_w.clone()
+        external_act_mask = self.command[:,-1].bool()
+        base_pos_w[external_act_mask, 2] += 0.6
+        # display markers
+        self.hug_wbc_visualizer.visualize(base_pos_w)
+    
     def _resample_command(self, env_ids: Sequence[int]):
         update_disturb_mask = self.noise_disturb_mode[env_ids]
         update_disturb_envs = env_ids[update_disturb_mask]
@@ -236,3 +269,8 @@ class HugWBCCommandCfg(CommandTermCfg):
     action_scale: float = 0.25
     uniform_scale: float = 1.0  # 均匀采样缩放系数
     max_curriculum: float = 1.0 
+
+    # for visualization
+    hug_wbc_vis_cfg: VisualizationMarkersCfg = HUGWBC_FLAG_MARKER_CFG.replace(
+        prim_path="/Visuals/Command/hugwbc"
+    )

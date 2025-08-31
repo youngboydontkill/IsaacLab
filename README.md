@@ -125,10 +125,17 @@ python scripts/rsl_rl/train.py \
     "console": "integratedTerminal",
 }
 ```
+使用vscode调试建议安装`Data Wrangler`插件用于可视化CPU的Tensor
 
 命令行启动：
 ```bash
 python scripts/rsl_rl/play.py \
     --task Legged-Isaac-Velocity-Flat-Kuavo-S42-Play-v0 \
+    --num_envs 32
+```
+启动HugWBC的play:
+```bash
+python scripts/rsl_rl/play.py \
+    --task Legged-Isaac-Velocity-Flat-HugWBC-Kuavo-S42-Play-v0 \
     --num_envs 32
 ```

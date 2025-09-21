@@ -115,6 +115,11 @@ class KuavoS42RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     save_interval = 50
     experiment_name = "Kuavo/s42/rough"
     empirical_normalization = True
+    # for rsl rl 3.0 
+    obs_groups = {
+        "policy": ["policy"],
+        "critic": ["policy", "privileged"],
+    }
     policy = RslRlPpoActorCriticCfg(
         # class_name="ActorCriticRecurrent",
         init_noise_std=1.0,
@@ -298,4 +303,74 @@ class KuavoS42FlatHugWBCPPORunnerCfg(KuavoS42RoughPPORunnerCfg):
             mirror_loss_coeff=1.0, 
             data_augmentation_func=data_augmentation
         )
-    
+
+@configclass
+class RslRlPpoEncActorCriticCfg(RslRlPpoActorCriticCfg):
+    class_name = "EncActorCritic"
+    embedding_dim:int = 64
+    obs_style:str = 'lab'
+    load_mask:int = 7 
+@configclass 
+class KuavoAttentionRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+    num_steps_per_env = 24
+    max_iterations = 15000
+    save_interval = 50
+    experiment_name = "Kuavo/s42/rough/atten"
+    empirical_normalization = True
+    # for rsl rl 3.0 
+    obs_groups = {
+        "policy": ["policy"],
+        "critic": ["policy", "privileged"],
+        "perception": ["perception"]
+    }
+    policy = RslRlPpoEncActorCriticCfg(
+            init_noise_std=1.0,
+            actor_hidden_dims=[512, 256, 128],
+            critic_hidden_dims=[512, 256, 128],
+            activation="elu",
+            embedding_dim=64,
+            obs_style="lab",
+            load_mask=7 
+        )
+    algorithm = RslRlPpoAlgorithmCfg(
+        value_loss_coef=1.0,
+        use_clipped_value_loss=True,
+        clip_param=0.2,
+        entropy_coef=0.005,
+        num_learning_epochs=5,
+        num_mini_batches=4,
+        learning_rate=1.0e-3,
+        schedule="adaptive",
+        gamma=0.99,
+        lam=0.95,
+        desired_kl=0.01,
+        max_grad_norm=1.0
+    )
+    def __post_init__(self):
+        super().__post_init__()
+
+        # 默认是没有对称性增强的，需要手动在这里设置以方便支持不同policy的obs 
+        # step 1 : 设置好history length和观测的key
+        self.history_len = 5 
+        # self.policy_obs_keys = ["height_scan","base_ang_vel","gravity","cmd_vel","hugwbc_cmd","joint_pos","joint_vel","action"]
+        # self.critic_obs_keys = ["height_scan","base_ang_vel","gravity","cmd_vel","hugwbc_cmd","joint_pos","joint_vel","action",
+        #     "base_lin_vel","joint_torques","joint_accs","feet_lin_vel","feet_contact_force",
+        #     "base_mass_rel","rigid_body_material","base_com","action_delay","push_force","push_torque",
+        #     "feet_heights","feet_air_times"]
+        # # step 2 : 设置好对称性增强的规则
+        # policy_obs_mirror_indices, policy_obs_mirror_signs = self._process_policy_mirror_obs()
+        # critic_obs_mirror_indices, critic_obs_mirror_signs = self._process_critic_mirror_obs()
+        # global POLICY_MIRROR_INDICES, POLICY_MIRROR_SIGNS
+        # global CRITIC_MIRROR_INDICES, CRITIC_MIRROR_SIGNS
+        # POLICY_MIRROR_INDICES = policy_obs_mirror_indices
+        # POLICY_MIRROR_SIGNS = policy_obs_mirror_signs
+        # CRITIC_MIRROR_INDICES = critic_obs_mirror_indices
+        # CRITIC_MIRROR_SIGNS = critic_obs_mirror_signs
+
+        # self.algorithm.symmetry_cfg = RslRlSymmetryCfg(
+        #     use_data_augmentation=True, 
+        #     use_mirror_loss=True,
+        #     mirror_loss_coeff=1.0, 
+        #     data_augmentation_func=data_augmentation
+        # )
+        self.algorithm.symmetry_cfg = None 

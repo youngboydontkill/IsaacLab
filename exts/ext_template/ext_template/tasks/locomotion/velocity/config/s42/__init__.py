@@ -90,6 +90,27 @@ gym.register(
     },
 )
 
+# for Attention 
+gym.register(
+    id="Legged-Isaac-Attention-Rough-Kuavo-S42-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.attention_env_cfg:KuavoAttentionRoughEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:KuavoAttentionRoughPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="Legged-Isaac-Attention-Rough-Kuavo-S42-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.attention_env_cfg:KuavoAttentionRoughEnvCfg_PLAY",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:KuavoAttentionRoughPPORunnerCfg",
+    },
+)
+
 gym.register(
     id="Legged-Isaac-Velocity-Flat-Kuavo-S42-DreamWaq-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",

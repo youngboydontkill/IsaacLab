@@ -247,3 +247,19 @@ def feet_air_time_obs(
     air_time = contact_sensor.data.current_air_time[:, sensor_cfg.body_ids]
 
     return air_time
+
+# for Perception : 
+def map_scan(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg, offset: float = 0.5) -> torch.Tensor:
+    """Height scan from the given sensor w.r.t. the sensor's frame.
+    The provided offset (Defaults to 0.5) is subtracted from the returned values.
+    :return : (N, L, W, 3) tensor of height scans 
+    """
+    # extract the used quantities (to enable type-hinting)
+    sensor: RayCaster = env.scene.sensors[sensor_cfg.name]
+    grid_size = sensor.cfg.pattern_cfg.size  # [L,W](m)
+    resolution = sensor.cfg.pattern_cfg.resolution  # 
+    grid_shape = (int(grid_size[0]/resolution) + 1, int(grid_size[1]/resolution) +1)
+    # height scan: height = sensor_height - hit_point_z - offset
+    height_scan = sensor.data.pos_w[:, :3].unsqueeze(1) - sensor.data.ray_hits_w[..., :3]
+    B = height_scan.shape[0]
+    return height_scan.view(B, grid_shape[0], grid_shape[1], 3)

@@ -214,13 +214,13 @@ class KuavoAttentionRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         # step 1 : 设置好history length和观测的key
         self.history_len = 1 
         
-        self.policy_obs_keys = ["base_ang_vel","gravity","cmd","joint_pos","joint_vel","action"]
-        self.priveleged_obs_keys = ["base_lin_vel","joint_torques","joint_accs","feet_lin_vel","feet_contact_force",
+        self.policy_obs_keys = ["base_ang_vel","gravity","cmd_vel","joint_pos","joint_vel","action"]
+        self.privileged_obs_keys = ["base_lin_vel","joint_torques","joint_accs","feet_lin_vel","feet_contact_force",
             "base_mass_rel","rigid_body_material","base_com","action_delay","push_force","push_torque",
             "feet_heights","feet_air_times"]
         SymmetryAug.clear()
         SymmetryAug.register_obs("policy",self.policy_obs_keys)
-        SymmetryAug.register_obs("priveleged",self.priveleged_obs_keys)
+        SymmetryAug.register_obs("privileged",self.privileged_obs_keys)
         SymmetryAug.register_obs_high_dim("perception",mirror_scan_height)
 
         self.algorithm.symmetry_cfg = RslRlSymmetryCfg(
@@ -244,7 +244,6 @@ class KuavoAttentionRoughPPORunnerPlayCfg(KuavoAttentionRoughPPORunnerCfg):
             critic_hidden_dims=[512, 256, 128],
             activation="elu",
             embedding_dim=64,
-            obs_style="lab",
             load_mask=15,
             output_attention=True,
         )

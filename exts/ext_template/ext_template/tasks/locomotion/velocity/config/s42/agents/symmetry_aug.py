@@ -157,12 +157,14 @@ class SymmetryAug2D:
         if obs is None:
             obs_aug = None 
         else:
-            obs_aug = TensorDict()
+            B = obs.batch_size[0]  # tensordict 特有的
+            new_batch_size = [2*B] # 假设你在 dim=1 拼接
+            obs_aug = TensorDict({}, batch_size=new_batch_size, device=obs.device)
             for k in obs.keys():
                 assert k in cls.OBS_MIRROR_REGIST_KEYS.keys(), f"Observation key '{k}' not in mirror regist keys"
                 mirror_indices = cls.OBS_MIRROR_INDICES_DICT[k]
                 mirror_signs = cls.OBS_MIRROR_SIGNS_DICT[k]
-                obs_k_aug = torch.cat((obs, cls.mirror_tensors(obs[k], 
+                obs_k_aug = torch.cat((obs[k], cls.mirror_tensors(obs[k], 
                     mirror_indices, mirror_signs)), dim=0)
                 obs_aug[k] = obs_k_aug
         if actions is None:
@@ -178,7 +180,7 @@ class SymmetryAug(SymmetryAug2D):
     only need to mirror the image along the width axis.
     """
     # IMAGE'S KEYS , shape = [B,H,L,W,C] , L和机器人的x轴重合,只对W进行flip. 特别的,针对map scan,我们对x不变,y负号,z进行flip
-    OBS_HiGH_DIM_AUG_DICT = {
+    OBS_HIGH_DIM_AUG_DICT = {
         # "perception" : mirror_scan_height
     }
 
@@ -215,7 +217,7 @@ class SymmetryAug(SymmetryAug2D):
     @classmethod
     def register_obs_high_dim(cls, key:str, high_dim_obs_aug):
         cls.OBS_MIRROR_REGIST_KEYS[key] = []
-        cls.OBS_HiGH_DIM_AUG_DICT[key] = high_dim_obs_aug
+        cls.OBS_HIGH_DIM_AUG_DICT[key] = high_dim_obs_aug
     
     @classmethod
     def data_augmentation_dict(cls,env, obs:TensorDict, actions:torch.Tensor)->tuple:
@@ -226,18 +228,19 @@ class SymmetryAug(SymmetryAug2D):
         if obs is None:
             obs_aug = None 
         else:
-            obs_aug = TensorDict()
+            # observations = self.observations.flatten(0, 1)->这里接受到的obs的batch size就已经发生变化了
+            B = obs.batch_size[0]  # tensordict 特有的
+            new_batch_size = [2*B] # 假设你在 dim=1 拼接
+            obs_aug = TensorDict({}, batch_size=new_batch_size, device=obs.device)
             for k in obs.keys():
                 assert k in cls.OBS_MIRROR_REGIST_KEYS.keys(), f"Observation key '{k}' not in mirror regist keys"
-                if (k in cls.OBS_HiGH_DIM_AUG_DICT.keys()):
-                    obs_aug[k] = cls.OBS_HiGH_DIM_AUG_DICT[k](obs[k])
-                    obs_k_aug = torch.cat((obs, cls.OBS_HiGH_DIM_AUG_DICT[k](obs[k])), dim=0)
-                    obs_aug[k] = obs_k_aug
+                if (k in cls.OBS_HIGH_DIM_AUG_DICT.keys()):
+                    obs_k_aug = cls.OBS_HIGH_DIM_AUG_DICT[k](obs[k])
+                    obs_aug[k] = torch.cat((obs[k], obs_k_aug), dim=0)
                 else:
                     mirror_indices = cls.OBS_MIRROR_INDICES_DICT[k]
                     mirror_signs = cls.OBS_MIRROR_SIGNS_DICT[k]
-                    obs_k_aug = torch.cat((obs, cls.mirror_tensors(obs[k], 
-                        mirror_indices, mirror_signs)), dim=0)
+                    obs_k_aug = torch.cat((obs[k], cls.mirror_tensors(obs[k], mirror_indices, mirror_signs)), dim=0)
                     obs_aug[k] = obs_k_aug
         if actions is None:
             actions_aug = None

@@ -1,10 +1,14 @@
+"""
+Brief : Exporter for observation with shape = [B,H,D,...]
+"""
+
 import argparse
 import numpy as np 
 import os
 import torch
 import copy
+from tensordict import TensorDict 
 
-# for lab 2 gym convert :
 OBSTERMLAB2GYM = {
             "base_ang_vel":[0,1,2],
             "gravity":[0,1,2],
@@ -100,89 +104,54 @@ def generate_gym_obs_indices(obs_keys:dict,history_len:int)->np.array:
     lab2gym = np.array(lab2gym).reshape(-1)
     return lab2gym.astype(np.int32)
 
-def export_policy_as_onnx_s42(
-    actor_critic: object, path: str, obs:dict,normalizer: object | None = None, filename="policy.onnx", verbose=False
+def export_enc_policy(
+    actor_critic: object, path: str, obs:dict, filename="policy.onnx", verbose=False
 ):
-    """Export policy into a Torch ONNX file.
-
-    Args:
-        actor_critic: The actor-critic torch module.
-        obs : actor dict keys from cfg
-        normalizer: The empirical normalizer module. If None, Identity is used.
-        path: The path to the saving directory.
-        filename: The name of exported ONNX file. Defaults to "policy.onnx".
-        verbose: Whether to print the model summary. Defaults to False.
-    """
     if not os.path.exists(path):
         os.makedirs(path, exist_ok=True)
-    policy_exporter = _OnnxPolicyExporter(actor_critic, obs,normalizer, verbose)
+    policy_exporter = EncActorCriticExporter(actor_critic, obs, verbose)
     policy_exporter.export(path, filename)
 
-class _OnnxPolicyExporter(torch.nn.Module):
+class EncActorCriticExporter(torch.nn.Module):
     """Exporter of actor-critic into ONNX file."""
-
-    def __init__(self, actor_critic, obs:dict,normalizer=None, verbose=False):
+    # 感觉在rsl rl里面加会更好,这里加还是太别扭了
+    def __init__(self, actor_critic, obs_keys:dict, verbose=False):
         super().__init__()
         self.verbose = verbose
-        self.actor = copy.deepcopy(actor_critic.actor)
-        self.is_recurrent = actor_critic.is_recurrent
-        if self.is_recurrent:
-            self.rnn = copy.deepcopy(actor_critic.memory_a.rnn)
-            self.rnn.cpu()
-            self.forward = self.forward_lstm
-        # copy normalizer if exists
-        if normalizer:
-            self.normalizer = copy.deepcopy(normalizer)
-        else:
-            self.normalizer = torch.nn.Identity()
+        self.actor_critic = copy.deepcopy(actor_critic)
+        self.obs_groups = actor_critic.obs_groups
+        self.history = actor_critic.horizon
         
-        self.policy_obs_keys = obs 
-        # 根据key构造gym2lab
-        history = 5
-        self.gym2lab = generate_lab_obs_indices(self.policy_obs_keys,history)
-        
+        self.policy_obs_keys = obs_keys
+        # # 根据key构造gym2lab
+        self.gym2lab = generate_lab_obs_indices(self.policy_obs_keys,1)  # for [B,H,D,...]
         self.lab2gym = [0, 4, 8, 12, 16, 20, 1, 5, 9, 13, 17, 21, 2, 6, 10, 14, 18, 22, 24, 3, 7, 11, 15, 19, 23, 25]
 
-    def forward_lstm(self, x_in, h_in, c_in):
-        x_in = self.normalizer(x_in)
-        x, (h, c) = self.rnn(x_in.unsqueeze(0), (h_in, c_in))
-        x = x.squeeze(0)
-        return self.actor(x[:, self.gym2lab])[:, self.lab2gym], h, c
-
-    def forward(self, x):
-        return self.actor(self.normalizer(x[:, self.gym2lab]))[:, self.lab2gym]
+    def forward(self, prop:torch.Tensor, map_scan:torch.Tensor):
+        lab_prop = prop[:,:,self.gym2lab]  # [B,H,d]
+        low_dim_obs = self.actor_critic.actor_obs_normalizer(lab_prop) # [B,H,d]
+        # compute embedding 
+        embedding,attention = self.actor_critic.encoder(map_scan,low_dim_obs,embedding_only=False)
+        embedding_vec = embedding.view(embedding.shape[0], -1)  # [B,H*(d+d_obs)], gym style 
+        # compute mean
+        action = self.actor_critic.actor(embedding_vec)
+        return action[:, self.lab2gym]
 
     def export(self, path, filename):
         self.to("cpu")
-        if self.is_recurrent:
-            obs = torch.zeros(1, self.rnn.input_size)
-            h_in = torch.zeros(self.rnn.num_layers, 1, self.rnn.hidden_size)
-            c_in = torch.zeros(self.rnn.num_layers, 1, self.rnn.hidden_size)
-            actions, h_out, c_out = self(obs, h_in, c_in)
-            torch.onnx.export(
-                self,
-                (obs, h_in, c_in),
-                os.path.join(path, filename),
-                export_params=True,
-                opset_version=11,
-                verbose=self.verbose,
-                input_names=["obs", "h_in", "c_in"],
-                output_names=["actions", "h_out", "c_out"],
-                dynamic_axes={},
-            )
-        else:
-            obs = torch.zeros(1, self.actor[0].in_features)
-            torch.onnx.export(
-                self,
-                obs,
-                os.path.join(path, filename),
-                export_params=True,
-                opset_version=11,
-                verbose=self.verbose,
-                input_names=["obs"],
-                output_names=["actions"],
-                dynamic_axes={},
-            )
+        prop = torch.randn(1,self.history,self.actor_critic.num_actor_obs)
+        map_scan = torch.randn(1,*self.actor_critic.high_dim_obs_shape[1:])
+        torch.onnx.export(
+            self,
+            (prop,map_scan),
+            os.path.join(path, filename),
+            export_params=True,
+            opset_version=14,
+            verbose=self.verbose,
+            input_names=["prop","map_scan"],
+            output_names=["actions"],
+            dynamic_axes={},
+        )
 
 if __name__ == "__main__":
     from isaaclab.app import AppLauncher
@@ -229,9 +198,6 @@ if __name__ == "__main__":
 
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode=None)
-    # convert to single-agent instance if required by the RL algorithm
-    # if isinstance(env.unwrapped, DirectMARLEnv):
-    #     env = multi_agent_to_single_agent(env)
 
     # wrap around environment for rsl-rl
     env = RslRlVecEnvWrapper(env)
@@ -245,6 +211,6 @@ if __name__ == "__main__":
     policy = ppo_runner.get_inference_policy(device=env.unwrapped.device)
     # export policy to onnx/jit
     export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
-    export_policy_as_onnx_s42(
-        ppo_runner.alg.policy,obs=agent_cfg.policy_obs_keys,normalizer=ppo_runner.obs_normalizer, path=export_model_dir, filename="policy_s45.onnx"
+    export_enc_policy(
+        ppo_runner.alg.policy,obs=agent_cfg.policy_obs_keys,path=export_model_dir, filename="enc_policy_s45.onnx"
     )

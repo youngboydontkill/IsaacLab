@@ -14,3 +14,5 @@ from .hugwbc_observations import *
 from .hugwbc_actions import *
 from .hugwbc_rewards import *
 
+# for visualization
+from .vis_observations import *

@@ -23,3 +23,6 @@ nv_shadercache/
 
 #isaacsim 
 .thumbs/
+
+# checkpoints
+*.pt 

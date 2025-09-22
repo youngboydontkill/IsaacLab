@@ -105,7 +105,7 @@ class ObservationsCfg:
             self.concatenate_terms = True
 
     @configclass
-    class CriticCfg(PolicyCfg):
+    class PrivilegedCfg(ObsGroup):
         base_lin_vel = ObsTerm(
             func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1)
         )
@@ -172,14 +172,26 @@ class ObservationsCfg:
                 ),
             },
         )
+        history_length = 5
 
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
-
+    
+    @configclass
+    class PerceptionCfg(ObsGroup):
+        map_scan = ObsTerm(
+            func=mdp.map_scan,
+            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+            noise=Unoise(n_min=-0.1, n_max=0.1),
+            clip=(-1.0, 1.0),
+        )
+        flatten_history_dim = False  # [B,H,D,...]
+        history_length = 1
     # observation groups
     policy: PolicyCfg = PolicyCfg()
-    critic: CriticCfg = CriticCfg()
+    privileged: PrivilegedCfg = PrivilegedCfg()
+    perception: PerceptionCfg = PerceptionCfg()
 
 
 @configclass
@@ -548,7 +560,7 @@ class KuavoS42FlatHugWBCEnvCfg(KuavoS42HugWBCEnvCfg):
         # no height scan
         # self.scene.height_scanner = None
         self.observations.policy.height_scan = None
-        self.observations.critic.height_scan = None
+        self.observations.privileged.height_scan = None
         # no terrain curriculum
         self.curriculum.terrain_levels = None
 

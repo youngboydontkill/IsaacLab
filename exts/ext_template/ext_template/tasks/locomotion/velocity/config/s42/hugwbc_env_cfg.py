@@ -178,20 +178,20 @@ class ObservationsCfg:
             self.enable_corruption = False
             self.concatenate_terms = True
     
-    @configclass
-    class PerceptionCfg(ObsGroup):
-        map_scan = ObsTerm(
-            func=mdp.map_scan,
-            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-            noise=Unoise(n_min=-0.1, n_max=0.1),
-            clip=(-1.0, 1.0),
-        )
-        flatten_history_dim = False  # [B,H,D,...]
-        history_length = 1
+    # @configclass
+    # class PerceptionCfg(ObsGroup):
+    #     map_scan = ObsTerm(
+    #         func=mdp.map_scan_base,
+    #         params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+    #         noise=Unoise(n_min=-0.1, n_max=0.1),
+    #         clip=(-1.0, 1.0),
+    #     )
+    #     flatten_history_dim = False  # [B,H,D,...]
+    #     history_length = 1
     # observation groups
     policy: PolicyCfg = PolicyCfg()
     privileged: PrivilegedCfg = PrivilegedCfg()
-    perception: PerceptionCfg = PerceptionCfg()
+    # perception: PerceptionCfg = PerceptionCfg()
 
 
 @configclass

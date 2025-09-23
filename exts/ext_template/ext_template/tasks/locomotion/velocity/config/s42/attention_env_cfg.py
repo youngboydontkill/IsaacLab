@@ -53,22 +53,7 @@ from .rough_env_cfg import MySceneCfg
 class CommandsCfg:
     """Command specifications for the MDP."""
 
-    base_velocity = mdp.UniformVelocityCommandCfg(
-        asset_name="robot",
-        resampling_time_range=(5.0, 5.0),
-        rel_standing_envs=0.1,
-        rel_heading_envs=1.0,
-        heading_command=True,
-        heading_control_stiffness=0.5,
-        debug_vis=True,
-        ranges=mdp.UniformVelocityCommandCfg.Ranges(
-            lin_vel_x=(-1.0, 1.0),
-            lin_vel_y=(-0.5, 0.5),
-            ang_vel_z=(-1.0, 1.0),
-            heading=(-math.pi, math.pi),
-        ), 
-    )
-    # base_velocity = mdp.UniformSteppingVelocityCommandCfg(
+    # base_velocity = mdp.UniformVelocityCommandCfg(
     #     asset_name="robot",
     #     resampling_time_range=(5.0, 5.0),
     #     rel_standing_envs=0.1,
@@ -76,14 +61,29 @@ class CommandsCfg:
     #     heading_command=True,
     #     heading_control_stiffness=0.5,
     #     debug_vis=True,
-    #     ranges=mdp.UniformSteppingVelocityCommandCfg.Ranges(
+    #     ranges=mdp.UniformVelocityCommandCfg.Ranges(
     #         lin_vel_x=(-1.0, 1.0),
     #         lin_vel_y=(-0.5, 0.5),
     #         ang_vel_z=(-1.0, 1.0),
     #         heading=(-math.pi, math.pi),
-    #     ),
-    #     rel_stepping_envs=0.5,    
+    #     ), 
     # )
+    base_velocity = mdp.UniformSteppingVelocityCommandCfg(
+        asset_name="robot",
+        resampling_time_range=(5.0, 5.0),
+        rel_standing_envs=0.1,
+        rel_heading_envs=1.0,
+        heading_command=True,
+        heading_control_stiffness=0.5,
+        debug_vis=True,
+        ranges=mdp.UniformSteppingVelocityCommandCfg.Ranges(
+            lin_vel_x=(-1.0, 1.0),
+            lin_vel_y=(-0.5, 0.5),
+            ang_vel_z=(-1.0, 1.0),
+            heading=(-math.pi, math.pi),
+        ),
+        rel_stepping_envs=0.5,    
+    )
 
 
 @configclass
@@ -93,7 +93,7 @@ class ObservationsCfg:
     @configclass
     class PerceptionCfg(ObsGroup):
         map_scan = ObsTerm(
-            func=mdp.map_scan,
+            func=mdp.map_scan_base,
             params={"sensor_cfg": SceneEntityCfg("height_scanner")},
             # noise=Unoise(n_min=-0.1, n_max=0.1),
             clip=(-1.0, 1.0),

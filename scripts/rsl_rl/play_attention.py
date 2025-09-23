@@ -54,7 +54,7 @@ from isaaclab_rl.rsl_rl import (
 # for visualization 
 import isaaclab.sim as sim_utils
 from isaaclab.markers import VisualizationMarkers, VisualizationMarkersCfg
-
+from isaaclab.utils.math import quat_apply,quat_apply_yaw
 # Import extensions to set up environment tasks
 import ext_template.tasks  # noqa: F401
 
@@ -79,7 +79,8 @@ def define_markers() -> VisualizationMarkers:
     )
     return VisualizationMarkers(marker_cfg)
 
-def visualize_attention(obs:TensorDict, attention:torch.Tensor, markers:VisualizationMarkers):
+def visualize_attention(obs:TensorDict, attention:torch.Tensor, 
+                        markers:VisualizationMarkers,ray_aligment='yaw'):
     """
     :brief : Visualize attention.
     :param obs: TensorDict, 
@@ -88,8 +89,20 @@ def visualize_attention(obs:TensorDict, attention:torch.Tensor, markers:Visualiz
     map_scans = obs['perception']  # shape (B, H, L, W, 3)
     root_pose = obs['visualize'][:,0,...]  # shape (B, 7)
     root_pos = root_pose[:,:3]  # shape (B, 3)
+    root_quat = root_pose[:,3:7]  # shape (B, 4)
     B = root_pos.shape[0]
-    lastest_scan = map_scans[:,0,...]  # only visualize the lastest scan
+    lastest_scan = map_scans[:,0,...]  # only visualize the lastest scan (B,L,W,3)
+    L = lastest_scan.shape[1]
+    W = lastest_scan.shape[2]
+    # 这里换成的base frame, 所以需要最后进行一个rotation
+    if (ray_aligment == 'yaw'):
+        last_scan_flatten = lastest_scan.view(-1,3)  # shape (B*L*W, 3)
+        height_scan = quat_apply_yaw(root_quat.repeat(1, L*W), last_scan_flatten)
+        lastest_scan = height_scan.view(B,L,W,3)
+    elif (ray_aligment == 'base'):
+        last_scan_flatten = lastest_scan.view(-1,3)  # shape (B*L*W, 3)
+        height_scan = quat_apply(root_quat.repeat(1, L*W), last_scan_flatten)
+        lastest_scan = height_scan.view(B,L,W,3)
     lastest_scan_world = -lastest_scan + root_pos.unsqueeze(1).unsqueeze(1)  # shape (B, L, W, 3)
     lastest_attention = attention[:,0,...].view(-1)  # only visualize the lastest attention
     # print(torch.max(lastest_attention))

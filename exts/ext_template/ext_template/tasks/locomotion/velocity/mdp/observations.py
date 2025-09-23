@@ -19,6 +19,7 @@ from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers.manager_base import ManagerTermBase
 from isaaclab.managers.manager_term_cfg import ObservationTermCfg
 from isaaclab.sensors import ContactSensor
+from isaaclab.utils.math import quat_apply_inverse,quat_apply_yaw, quat_inv 
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedEnv, ManagerBasedRLEnv
@@ -249,17 +250,32 @@ def feet_air_time_obs(
     return air_time
 
 # for Perception : 
-def map_scan(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg, offset: float = 0.5) -> torch.Tensor:
+def map_scan_base(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg, offset: float = 0.5) -> torch.Tensor:
     """Height scan from the given sensor w.r.t. the sensor's frame.
     The provided offset (Defaults to 0.5) is subtracted from the returned values.
     :return : (N, L, W, 3) tensor of height scans 
     """
     # extract the used quantities (to enable type-hinting)
     sensor: RayCaster = env.scene.sensors[sensor_cfg.name]
+    # calculate the height scan shape 
     grid_size = sensor.cfg.pattern_cfg.size  # [L,W](m)
     resolution = sensor.cfg.pattern_cfg.resolution  # 
     grid_shape = (int(grid_size[0]/resolution) + 1, int(grid_size[1]/resolution) +1)
     # height scan: height = sensor_height - hit_point_z - offset
     height_scan = sensor.data.pos_w[:, :3].unsqueeze(1) - sensor.data.ray_hits_w[..., :3]
+    # shape = [B, L*W, 3]
+    L = grid_shape[0]
+    W = grid_shape[1]
     B = height_scan.shape[0]
-    return height_scan.view(B, grid_shape[0], grid_shape[1], 3)
+    # convert to base frame
+    if sensor.cfg.ray_alignment == "yaw":
+        # only yaw orientation is considered and directions are not rotated
+        quat_w2b = quat_inv(sensor.data.quat_w)
+        height_scan = quat_apply_yaw(quat_w2b.repeat(1, L*W), 
+                                      height_scan)
+    elif sensor.cfg.ray_alignment == "base":
+        height_scan = quat_apply_inverse(sensor.data.quat_w.repeat(1, L*W), 
+                                      height_scan)
+    # 需要注意,这里的shape是(W,L,3),而不是(L,W,3),因为默认是xy采样,因此会先变化x,
+    # 然而先变化x说明先对L进行操作,因此第一个维度是W
+    return height_scan.view(B, W, L, 3).permute(0,2,1,3)  # [B,L,W,3]

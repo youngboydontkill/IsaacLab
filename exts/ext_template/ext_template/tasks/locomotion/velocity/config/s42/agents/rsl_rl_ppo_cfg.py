@@ -214,7 +214,7 @@ class KuavoAttentionRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         # step 1 : 设置好history length和观测的key
         self.history_len = 1 
         
-        self.policy_obs_keys = ["base_ang_vel","gravity","cmd_vel","joint_pos","joint_vel","action"]
+        self.policy_obs_keys = ["base_ang_vel","gravity","cmd","joint_pos","joint_vel","action"]
         self.privileged_obs_keys = ["base_lin_vel","joint_torques","joint_accs","feet_lin_vel","feet_contact_force",
             "base_mass_rel","rigid_body_material","base_com","action_delay","push_force","push_torque",
             "feet_heights","feet_air_times"]

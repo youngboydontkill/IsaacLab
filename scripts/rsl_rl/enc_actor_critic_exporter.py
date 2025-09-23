@@ -127,7 +127,22 @@ class EncActorCriticExporter(torch.nn.Module):
         self.gym2lab = generate_lab_obs_indices(self.policy_obs_keys,1)  # for [B,H,D,...]
         self.lab2gym = [0, 4, 8, 12, 16, 20, 1, 5, 9, 13, 17, 21, 2, 6, 10, 14, 18, 22, 24, 3, 7, 11, 15, 19, 23, 25]
 
-    def forward(self, prop:torch.Tensor, map_scan:torch.Tensor):
+    # def forward(self, prop:torch.Tensor, map_scan:torch.Tensor):
+    #     lab_prop = prop[:,:,self.gym2lab]  # [B,H,d]
+    #     low_dim_obs = self.actor_critic.actor_obs_normalizer(lab_prop) # [B,H,d]
+    #     # compute embedding 
+    #     embedding,attention = self.actor_critic.encoder(map_scan,low_dim_obs,embedding_only=False)
+    #     embedding_vec = embedding.view(embedding.shape[0], -1)  # [B,H*(d+d_obs)], gym style 
+    #     # compute mean
+    #     action = self.actor_critic.actor(embedding_vec)
+    #     return action[:, self.lab2gym]
+
+    def forward(self, obs:torch.Tensor):
+        # obs : [B,H,d+map_scan_flatten]
+        prop = obs[:,:,:self.actor_critic.num_actor_obs]  # [B,H,d]
+        map_scan_flatten = obs[:,:,self.actor_critic.num_actor_obs:]
+        map_scan = map_scan_flatten.view(map_scan_flatten.shape[0], self.history, 
+                                         *self.actor_critic.high_dim_obs_shape[2:])  # [B,H,L,W,3]
         lab_prop = prop[:,:,self.gym2lab]  # [B,H,d]
         low_dim_obs = self.actor_critic.actor_obs_normalizer(lab_prop) # [B,H,d]
         # compute embedding 
@@ -136,19 +151,22 @@ class EncActorCriticExporter(torch.nn.Module):
         # compute mean
         action = self.actor_critic.actor(embedding_vec)
         return action[:, self.lab2gym]
-
+    
     def export(self, path, filename):
         self.to("cpu")
-        prop = torch.randn(1,self.history,self.actor_critic.num_actor_obs)
-        map_scan = torch.randn(1,*self.actor_critic.high_dim_obs_shape[1:])
+        # prop = torch.randn(1,self.history,self.actor_critic.num_actor_obs)
+        # map_scan = torch.randn(1,*self.actor_critic.high_dim_obs_shape[1:])
+        obs = torch.randn(1,self.history,
+                          self.actor_critic.num_actor_obs + 
+                          np.prod(self.actor_critic.high_dim_obs_shape[2:]))
         torch.onnx.export(
             self,
-            (prop,map_scan),
+            (obs,),
             os.path.join(path, filename),
             export_params=True,
             opset_version=14,
             verbose=self.verbose,
-            input_names=["prop","map_scan"],
+            input_names=["obs"],
             output_names=["actions"],
             dynamic_axes={},
         )

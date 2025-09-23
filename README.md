@@ -142,7 +142,7 @@ python scripts/rsl_rl/play.py \
 启动Attention Based 的play
 ```bash
 python scripts/rsl_rl/play_attention.py \
-    --task Legged-IsaacAttention-Rough-Kuavo-S42-Play-v0 \
+    --task Legged-Isaac-Attention-Rough-Kuavo-S42-Play-v0 \
     --num_envs 32
 ```
 ### 迁移到RSL RL 3.1

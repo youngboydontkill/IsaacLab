@@ -171,22 +171,24 @@ class RslRlPpoEncActorCriticCfg(RslRlPpoActorCriticCfg):
     actor_obs_normalization=True 
     critic_obs_normalization=True
     output_attention=False  # policy是否输出attention,这里主要用于可视化
+
 @configclass 
 class KuavoAttentionRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 15000
+    max_iterations = 40000
     save_interval = 50
     experiment_name = "Kuavo/s42/rough/atten"
     empirical_normalization = True
     # for rsl rl 3.1
     obs_groups = {
-        "policy": ["policy"],
-        "critic": ["policy", "privileged"],
+        "policy": ["command","policy"],
+        "critic": ["command", "privileged"],
         "perception": ["perception"]
     }
 
     policy = RslRlPpoEncActorCriticCfg(
             init_noise_std=1.0,
+            noise_std_type='log',  # 不加这个会导致std<0无法采样
             actor_hidden_dims=[512, 256, 128],
             critic_hidden_dims=[512, 256, 128],
             activation="elu",
@@ -218,24 +220,24 @@ class KuavoAttentionRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         self.privileged_obs_keys = ["base_lin_vel","joint_torques","joint_accs","feet_lin_vel","feet_contact_force",
             "base_mass_rel","rigid_body_material","base_com","action_delay","push_force","push_torque",
             "feet_heights","feet_air_times"]
-        SymmetryAug.clear()
-        SymmetryAug.register_obs("policy",self.policy_obs_keys)
-        SymmetryAug.register_obs("privileged",self.privileged_obs_keys)
-        SymmetryAug.register_obs_high_dim("perception",mirror_scan_height)
+        # SymmetryAug.clear()
+        # SymmetryAug.register_obs("policy",self.policy_obs_keys)
+        # SymmetryAug.register_obs("privileged",self.privileged_obs_keys)
+        # SymmetryAug.register_obs_high_dim("perception",mirror_scan_height)
 
-        self.algorithm.symmetry_cfg = RslRlSymmetryCfg(
-            use_data_augmentation=True, 
-            use_mirror_loss=True,
-            mirror_loss_coeff=1.0, 
-            # data_augmentation_func=SymmetryAug.data_augmentation_dict  # 这么写有点问题,他会把整个SymmetryAug.xxx识别为一个callable,但是实际只有后面是
-            data_augmentation_func=data_augmentation_dict
-        )
+        # self.algorithm.symmetry_cfg = RslRlSymmetryCfg(
+        #     use_data_augmentation=True, 
+        #     use_mirror_loss=True,
+        #     mirror_loss_coeff=1.0, 
+        #     # data_augmentation_func=SymmetryAug.data_augmentation_dict  # 这么写有点问题,他会把整个SymmetryAug.xxx识别为一个callable,但是实际只有后面是
+        #     data_augmentation_func=data_augmentation_dict
+        # )
 
 @configclass 
 class KuavoAttentionRoughPPORunnerPlayCfg(KuavoAttentionRoughPPORunnerCfg):
     obs_groups = {
-        "policy": ["policy"],
-        "critic": ["policy", "privileged"],
+        "policy": ["command","policy"],
+        "critic": ["command", "privileged"],
         "perception": ["perception"]
     }
     policy = RslRlPpoEncActorCriticCfg(

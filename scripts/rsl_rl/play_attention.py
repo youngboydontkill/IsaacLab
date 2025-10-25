@@ -104,7 +104,12 @@ def visualize_attention(obs:TensorDict, attention:torch.Tensor,
         height_scan = quat_apply(root_quat.repeat(1, L*W), last_scan_flatten)
         lastest_scan = height_scan.view(B,L,W,3)
     lastest_scan_world = -lastest_scan + root_pos.unsqueeze(1).unsqueeze(1)  # shape (B, L, W, 3)
-    lastest_attention = attention[:,0,...].view(-1)  # only visualize the lastest attention
+    lastest_attention = attention[:,0,...]  # only visualize the lastest attention
+    # print(torch.sum(lastest_attention,dim=(1,2)))
+    # 首先求取batch内最大的attention，然后归一化
+    for env_idx in range(lastest_attention.size(0)):
+        lastest_attention[env_idx, :] = lastest_attention[env_idx, :] / (torch.max(lastest_attention[env_idx, :]) + 1e-8)
+    lastest_attention = lastest_attention.view(-1)
     # print(torch.max(lastest_attention))
     attention_indices = torch.zeros_like(lastest_attention,dtype=torch.int)
     for i in range(10):
@@ -159,15 +164,15 @@ def main():
 
     # export policy to onnx/jit
     export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
-    export_enc_policy(
-        ppo_runner.alg.policy,obs=agent_cfg.policy_obs_keys, path=export_model_dir, filename="enc_policy_s45.onnx"
-    )
+    # export_enc_policy(
+    #     ppo_runner.alg.policy,obs=agent_cfg.policy_obs_keys, path=export_model_dir, filename="enc_policy_s45.onnx"
+    # )
     # create markers :
     visualizer = define_markers()
     # reset environment
     obs = env.get_observations()
     timestep = 0
-    simulation_steps = 1000
+    simulation_steps = 100000
     sim_step = 0
     # simulate environment
     while simulation_app.is_running():

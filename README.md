@@ -145,6 +145,13 @@ python scripts/rsl_rl/play_attention.py \
     --task Legged-Isaac-Attention-Rough-Kuavo-S42-Play-v0 \
     --num_envs 32
 ```
+
+python scripts/rsl_rl/train.py \
+    --task Legged-Isaac-Attention-Rough-Kuavo-S42-v0 \
+    --num_envs 1024 \
+    --headless \
+    --resume=True
+    --checkpoint model_14999.pt
 ### 迁移到RSL RL 3.1
 由于图像或scan height等高维度观测的输入，一般需要在policy中加入一个encoder,这就使得actor和critic会共用一个embedding的输入，原始的rsl-rl的`VecEnv.step`定义返回的`[torch.Tensor,torch.Tensor,torch.Tensor,dict]`将actor的obs固定在了一个Tensor之中,不好拆分进行分别处理. 因此在rsl-rl 3.0.1版本之后将返回值修改为`[TensorDict,torch.Tensor,torch.Tensor,dict]`,这方便我们在ActorCritic同级的类中进行拆分处理. 要从历史版本的训练代码迁移到新版本,需要注意以下几点
 1. `ObservationCfg`

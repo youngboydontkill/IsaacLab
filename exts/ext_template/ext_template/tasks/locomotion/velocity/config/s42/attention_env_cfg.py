@@ -46,8 +46,72 @@ from isaaclab.utils import configclass
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
-from ext_template.terrains import ROUGH_TERRAINS_CFG
+from ext_template.terrains import ROUGH_TERRAINS_CFG,ATTEN_ROUGH_TERRAINS_CFG
 from .rough_env_cfg import MySceneCfg
+
+@configclass
+class AttentionSceneCfg(InteractiveSceneCfg):
+    """Configuration for the terrain scene with a legged robot."""
+
+    # ground terrain
+    terrain = TerrainImporterCfg(
+        prim_path="/World/ground",
+        terrain_type="generator",
+        terrain_generator=ATTEN_ROUGH_TERRAINS_CFG,
+        max_init_terrain_level=0,
+        collision_group=-1,
+        physics_material=sim_utils.RigidBodyMaterialCfg(
+            friction_combine_mode="average",
+            restitution_combine_mode="average",
+            static_friction=0.4,
+            dynamic_friction=0.4,
+            restitution=0.5,
+        ),
+        visual_material=sim_utils.MdlFileCfg(
+            mdl_path=f"{ISAACLAB_NUCLEUS_DIR}/Materials/TilesMarbleSpiderWhiteBrickBondHoned/TilesMarbleSpiderWhiteBrickBondHoned.mdl",
+            project_uvw=True,
+            texture_scale=(0.25, 0.25),
+        ),
+        debug_vis=False,
+    )
+    # robots
+    robot: ArticulationCfg = MISSING
+    # sensors
+    height_scanner = RayCasterCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/base_link",
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
+        ray_alignment='yaw',
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
+        debug_vis=False,
+        mesh_prim_paths=["/World/ground"],
+    )
+    contact_forces = ContactSensorCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True
+    )
+    # lights
+    sky_light = AssetBaseCfg(
+        prim_path="/World/skyLight",
+        spawn=sim_utils.DomeLightCfg(
+            intensity=750.0,
+            texture_file=f"{ISAAC_NUCLEUS_DIR}/Materials/Textures/Skies/PolyHaven/kloofendal_43d_clear_puresky_4k.hdr",
+        ),
+    )
+    Feet_L_scanner = RayCasterCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/leg_l6_link",
+        offset=RayCasterCfg.OffsetCfg(pos=(0.05, 0.0, 20.0)),
+        ray_alignment='yaw',
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.05, size=[0.2, 0.05]),
+        debug_vis=True,
+        mesh_prim_paths=["/World/ground"],
+    )
+    Feet_R_scanner = RayCasterCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/leg_r6_link",
+        offset=RayCasterCfg.OffsetCfg(pos=(0.05, 0.0, 20.0)),
+        ray_alignment='yaw',
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.05, size=[0.2, 0.05]),
+        debug_vis=True,
+        mesh_prim_paths=["/World/ground"],
+    )
 
 @configclass
 class CommandsCfg:
@@ -100,28 +164,70 @@ class ObservationsCfg:
         )
         flatten_history_dim = False  # [B,H,D,...]
         history_length = 1
+    
+    @configclass
+    class CommandCfg(ObsGroup):
+        velocity_commands = ObsTerm(
+            func=mdp.generated_commands, params={"command_name": "base_velocity"}
+        )
+        flatten_history_dim = False
+        history_length = 1
+
+        def __post_init__(self):
+            self.enable_corruption = True
+            self.concatenate_terms = True
 
     @configclass
     class PolicyCfg(ObsGroup):
         """Observations for policy group."""
+        base_lin_vel = ObsTerm(
+            func=mdp.base_lin_vel, 
+            noise=Unoise(n_min=-0.1, n_max=0.1)
+        )
+
         # observation terms (order preserved)
         base_ang_vel = ObsTerm(
             func=mdp.base_ang_vel, 
-            # noise=Unoise(n_min=-0.2, n_max=0.2)
+            noise=Unoise(n_min=-0.2, n_max=0.2)
         )
         projected_gravity = ObsTerm(
             func=mdp.projected_gravity,
-            # noise=Unoise(n_min=-0.05, n_max=0.05),
+            noise=Unoise(n_min=-0.05, n_max=0.05),
         )
-        velocity_commands = ObsTerm(
-            func=mdp.generated_commands, params={"command_name": "base_velocity"}
+        # velocity_commands = ObsTerm(
+        #     func=mdp.generated_commands, params={"command_name": "base_velocity"}
+        # )
+        joint_pos = ObsTerm(
+            func=mdp.joint_pos_rel, 
+            noise=Unoise(n_min=-0.05, n_max=0.05)
+        )
+        joint_vel = ObsTerm(func=mdp.joint_vel_rel, 
+                            noise=Unoise(n_min=-1.5, n_max=1.5)
+                            )
+        actions = ObsTerm(func=mdp.last_action)
+        flatten_history_dim = False
+        history_length = 1
+
+        def __post_init__(self):
+            self.enable_corruption = True
+            self.concatenate_terms = True
+    
+    @configclass
+    class PrivilegedCfg(ObsGroup):
+        """Observations for policy group."""
+        base_lin_vel = ObsTerm(
+            func=mdp.base_lin_vel, 
+        )
+        base_ang_vel = ObsTerm(
+            func=mdp.base_ang_vel, 
+        )
+        projected_gravity = ObsTerm(
+            func=mdp.projected_gravity,
         )
         joint_pos = ObsTerm(
             func=mdp.joint_pos_rel, 
-            # noise=Unoise(n_min=-0.05, n_max=0.05)
         )
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, 
-                            # noise=Unoise(n_min=-1.5, n_max=1.5)
                             )
         actions = ObsTerm(func=mdp.last_action)
         flatten_history_dim = False
@@ -131,77 +237,78 @@ class ObservationsCfg:
             self.enable_corruption = True
             self.concatenate_terms = True
 
-    @configclass
-    class PrivilegedCfg(ObsGroup):
-        base_lin_vel = ObsTerm(
-            func=mdp.base_lin_vel, 
-            # noise=Unoise(n_min=-0.1, n_max=0.1)
-        )
+    # @configclass
+    # class PrivilegedCfg(ObsGroup):
+    #     base_lin_vel = ObsTerm(
+    #         func=mdp.base_lin_vel, 
+    #         # noise=Unoise(n_min=-0.1, n_max=0.1)
+    #     )
 
-        joint_torques = ObsTerm(func=mdp.joint_torques)
-        joint_accs = ObsTerm(func=mdp.joint_accs)
-        feet_lin_vel = ObsTerm(
-            func=mdp.feet_lin_vel,
-            params={
-                "asset_cfg": SceneEntityCfg("robot", body_names=["leg_[l,r]6_link"])
-            },
-        )
-        feet_contact_force = ObsTerm(
-            func=mdp.feet_contact_force,
-            params={
-                "sensor_cfg": SceneEntityCfg(
-                    "contact_forces", body_names=["leg_[l,r]6_link"]
-                )
-            },
-        )
-        base_mass_rel = ObsTerm(
-            func=mdp.rigid_body_masses,
-            params={"asset_cfg": SceneEntityCfg("robot", body_names="base_link")},
-        )
-        rigid_body_material = ObsTerm(
-            func=mdp.rigid_body_material,
-            params={
-                "asset_cfg": SceneEntityCfg("robot", body_names=["leg_[l,r]6_link"])
-            },
-        )
-        base_com = ObsTerm(
-            func=mdp.base_com,
-            params={"asset_cfg": SceneEntityCfg("robot", body_names="base_link")},
-        )
-        action_delay = ObsTerm(
-            func=mdp.action_delay, params={"actuators_names": "motor"}
-        )
-        push_force = ObsTerm(
-            func=mdp.push_force,
-            params={"asset_cfg": SceneEntityCfg("robot", body_names="base_link")},
-        )
-        push_torque = ObsTerm(
-            func=mdp.push_torque,
-            params={"asset_cfg": SceneEntityCfg("robot", body_names="base_link")},
-        )
+    #     joint_torques = ObsTerm(func=mdp.joint_torques)
+    #     joint_accs = ObsTerm(func=mdp.joint_accs)
+    #     feet_lin_vel = ObsTerm(
+    #         func=mdp.feet_lin_vel,
+    #         params={
+    #             "asset_cfg": SceneEntityCfg("robot", body_names=["leg_[l,r]6_link"])
+    #         },
+    #     )
+    #     feet_contact_force = ObsTerm(
+    #         func=mdp.feet_contact_force,
+    #         params={
+    #             "sensor_cfg": SceneEntityCfg(
+    #                 "contact_forces", body_names=["leg_[l,r]6_link"]
+    #             )
+    #         },
+    #     )
+    #     base_mass_rel = ObsTerm(
+    #         func=mdp.rigid_body_masses,
+    #         params={"asset_cfg": SceneEntityCfg("robot", body_names="base_link")},
+    #     )
+    #     rigid_body_material = ObsTerm(
+    #         func=mdp.rigid_body_material,
+    #         params={
+    #             "asset_cfg": SceneEntityCfg("robot", body_names=["leg_[l,r]6_link"])
+    #         },
+    #     )
+    #     base_com = ObsTerm(
+    #         func=mdp.base_com,
+    #         params={"asset_cfg": SceneEntityCfg("robot", body_names="base_link")},
+    #     )
+    #     action_delay = ObsTerm(
+    #         func=mdp.action_delay, params={"actuators_names": "motor"}
+    #     )
+    #     push_force = ObsTerm(
+    #         func=mdp.push_force,
+    #         params={"asset_cfg": SceneEntityCfg("robot", body_names="base_link")},
+    #     )
+    #     push_torque = ObsTerm(
+    #         func=mdp.push_torque,
+    #         params={"asset_cfg": SceneEntityCfg("robot", body_names="base_link")},
+    #     )
 
-        feet_heights = ObsTerm(
-            func=mdp.feet_heights_bipeds,
-            params={
-                "sensor_cfg1": SceneEntityCfg("Feet_L_scanner"),
-                "sensor_cfg2": SceneEntityCfg("Feet_R_scanner"),
-            },
-        )
-        feet_air_times = ObsTerm(
-            func=mdp.feet_air_time_obs,
-            params={
-                "sensor_cfg": SceneEntityCfg(
-                    "contact_forces", body_names="leg_[l,r]6_link"
-                ),
-            },
-        )
-        history_length = 1
-        flatten_history_dim = False
-        def __post_init__(self):
-            self.enable_corruption = False
-            self.concatenate_terms = True
+    #     feet_heights = ObsTerm(
+    #         func=mdp.feet_heights_bipeds,
+    #         params={
+    #             "sensor_cfg1": SceneEntityCfg("Feet_L_scanner"),
+    #             "sensor_cfg2": SceneEntityCfg("Feet_R_scanner"),
+    #         },
+    #     )
+    #     feet_air_times = ObsTerm(
+    #         func=mdp.feet_air_time_obs,
+    #         params={
+    #             "sensor_cfg": SceneEntityCfg(
+    #                 "contact_forces", body_names="leg_[l,r]6_link"
+    #             ),
+    #         },
+    #     )
+    #     history_length = 1
+    #     flatten_history_dim = False
+    #     def __post_init__(self):
+    #         self.enable_corruption = False
+    #         self.concatenate_terms = True
 
     # observation groups
+    command: CommandCfg = CommandCfg()
     policy: PolicyCfg = PolicyCfg()
     privileged: PrivilegedCfg = PrivilegedCfg()
     perception: PerceptionCfg = PerceptionCfg()
@@ -214,16 +321,16 @@ class RewardsCfg:
     # # # -- task
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_yaw_frame_exp,
-        weight=2.0,
+        weight=5.0,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     track_ang_vel_z_exp = RewTerm(
         func=mdp.track_ang_vel_z_world_exp,
-        weight=1.0,
+        weight=3.0,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     # -- penalties
-    lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-0.2)
+    # lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-0.2)
     ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
     dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
     dof_power_l2 = RewTerm(func=mdp.joint_power_l2, weight=-2.0e-5)
@@ -255,8 +362,9 @@ class RewardsCfg:
             "threshold": 1.0,
         },
     )
-    dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=-1.0)
-    # is_terminated = RewTerm(func=mdp.is_terminated, weight=-100.0)
+    dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=-10.0)
+    # yysy,感觉得加
+    is_terminated = RewTerm(func=mdp.is_terminated, weight=-200.0)
 
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_clip,
@@ -313,7 +421,7 @@ class RewardsCfg:
     )
     flat_orientation_l2 = RewTerm(
         func=mdp.flat_orientation_l2,
-        weight=-1.25,
+        weight=-3.0,
     )
 
     contact_force = RewTerm(
@@ -506,7 +614,8 @@ class CurriculumCfg:
 
 @configclass
 class KuavoAttentionRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
-    scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=2.5)
+    # scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=2.5)
+    scene: AttentionSceneCfg = AttentionSceneCfg(num_envs=4096, env_spacing=2.5)
     commands: CommandsCfg = CommandsCfg()
     observations: ObservationsCfg = ObservationsCfg()
     rewards: RewardsCfg = RewardsCfg()
@@ -559,6 +668,8 @@ class KuavoAttentionRoughEnvCfg_PLAY(KuavoAttentionRoughEnvCfg):
         # remove random pushing event
         # self.events.base_external_force_torque = None
 
-        self.commands.base_velocity.ranges.lin_vel_x = (1.0, 1.0)
-        self.commands.base_velocity.ranges.lin_vel_y = (0, 0)
-        self.commands.base_velocity.ranges.ang_vel_z = (0, 0)
+        self.commands.base_velocity.ranges.lin_vel_x = (-1.0, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_y = (-0.5, 0.5)
+        self.commands.base_velocity.ranges.ang_vel_z = (-0.5, 0.5)
+        # self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
+        # self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)

@@ -177,7 +177,7 @@ class KuavoAttentionRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
     max_iterations = 40000
     save_interval = 50
-    experiment_name = "Kuavo/s42/rough/atten"
+    experiment_name = "Kuavo/s42/atten"
     empirical_normalization = True
     # for rsl rl 3.1
     obs_groups = {

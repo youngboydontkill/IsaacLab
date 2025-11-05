@@ -98,8 +98,8 @@ ATTEN_ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
         ),
         "mesh_star": terrain_gen.MeshStarTerrainCfg(
             proportion=0.2,
-            num_bars=4,
-            bar_width_range=(0.3,0.6),
+            num_bars=6,
+            bar_width_range=(0.2,0.5),
             bar_height_range=(5.0,10.0),
             platform_width=3.0,
         )

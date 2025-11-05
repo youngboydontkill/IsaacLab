@@ -194,9 +194,6 @@ class ObservationsCfg:
             func=mdp.projected_gravity,
             noise=Unoise(n_min=-0.05, n_max=0.05),
         )
-        # velocity_commands = ObsTerm(
-        #     func=mdp.generated_commands, params={"command_name": "base_velocity"}
-        # )
         joint_pos = ObsTerm(
             func=mdp.joint_pos_rel, 
             noise=Unoise(n_min=-0.05, n_max=0.05)
@@ -239,11 +236,6 @@ class ObservationsCfg:
 
     # @configclass
     # class PrivilegedCfg(ObsGroup):
-    #     base_lin_vel = ObsTerm(
-    #         func=mdp.base_lin_vel, 
-    #         # noise=Unoise(n_min=-0.1, n_max=0.1)
-    #     )
-
     #     joint_torques = ObsTerm(func=mdp.joint_torques)
     #     joint_accs = ObsTerm(func=mdp.joint_accs)
     #     feet_lin_vel = ObsTerm(

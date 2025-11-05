@@ -164,9 +164,9 @@ def main():
 
     # export policy to onnx/jit
     export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
-    # export_enc_policy(
-    #     ppo_runner.alg.policy,obs=agent_cfg.policy_obs_keys, path=export_model_dir, filename="enc_policy_s45.onnx"
-    # )
+    export_enc_policy(
+        ppo_runner.alg.policy,obs=agent_cfg.policy_obs_keys, path=export_model_dir, filename="enc_policy_s45.onnx"
+    )
     # create markers :
     visualizer = define_markers()
     # reset environment

@@ -215,11 +215,9 @@ class KuavoAttentionRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         # 默认是没有对称性增强的，需要手动在这里设置以方便支持不同policy的obs 
         # step 1 : 设置好history length和观测的key
         self.history_len = 1 
-        
-        self.policy_obs_keys = ["base_ang_vel","gravity","cmd","joint_pos","joint_vel","action"]
-        self.privileged_obs_keys = ["base_lin_vel","joint_torques","joint_accs","feet_lin_vel","feet_contact_force",
-            "base_mass_rel","rigid_body_material","base_com","action_delay","push_force","push_torque",
-            "feet_heights","feet_air_times"]
+        # TODO : 这里的数据增强应该需要重新设计支持tensordict
+        self.policy_obs_keys = ["cmd","base_lin_vel","base_ang_vel","gravity","joint_pos","joint_vel","action"]
+        self.privileged_obs_keys = ["cmd","base_lin_vel","base_ang_vel","gravity","joint_pos","joint_vel","action"]
         # SymmetryAug.clear()
         # SymmetryAug.register_obs("policy",self.policy_obs_keys)
         # SymmetryAug.register_obs("privileged",self.privileged_obs_keys)

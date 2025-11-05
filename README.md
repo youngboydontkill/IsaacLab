@@ -18,11 +18,11 @@
 
 ### 环境要求
 - Ubuntu 20.04/22.04 LTS
-- Isaac Sim 4.5
-- Isaac Lab 2.1.0
-- rsl-rl 2.3.1
+- Isaac Sim 5.0
+- Isaac Lab >2.3.0
+- rsl-rl >3.0.1
 
-具体的安装流程参考飞书文档，一键安装脚本是对的
+具体的安装流程参考飞书文档，一键安装脚本是对的. 针对该版本，建议使用github上最新的Isaaclab的`main`分支，不要用Tag，需要检查`IsaacLab/source/isaaclab_rl/isaaclab_rl/rsl_rl/vecenv_wrapper`的step返回是否为`TensorDict`类型
 ### Run with Docker 
 同样参考飞书文档，如果已经按照文档说明配置好了isaac-lab-base image，直接
 ```bash
@@ -107,6 +107,13 @@ python scripts/rsl_rl/train.py \
     --resume=True
     --checkpoint model_999.pt
 ```
+**启动attention based的训练**:
+```bash
+python scripts/rsl_rl/train.py \
+    --task Legged-Isaac-Attention-Rough-Kuavo-S42-v0 \
+    --num_envs 4096 \
+    --headless \
+```
 
 ### 可视化测试
 播放模式配置：
@@ -139,19 +146,12 @@ python scripts/rsl_rl/play.py \
     --task Legged-Isaac-Velocity-Flat-HugWBC-Kuavo-S42-Play-v0 \
     --num_envs 32
 ```
-启动Attention Based 的play
+**启动Attention Based 的play**
 ```bash
 python scripts/rsl_rl/play_attention.py \
     --task Legged-Isaac-Attention-Rough-Kuavo-S42-Play-v0 \
     --num_envs 32
 ```
-
-python scripts/rsl_rl/train.py \
-    --task Legged-Isaac-Attention-Rough-Kuavo-S42-v0 \
-    --num_envs 1024 \
-    --headless \
-    --resume=True
-    --checkpoint model_14999.pt
 ### 迁移到RSL RL 3.1
 由于图像或scan height等高维度观测的输入，一般需要在policy中加入一个encoder,这就使得actor和critic会共用一个embedding的输入，原始的rsl-rl的`VecEnv.step`定义返回的`[torch.Tensor,torch.Tensor,torch.Tensor,dict]`将actor的obs固定在了一个Tensor之中,不好拆分进行分别处理. 因此在rsl-rl 3.0.1版本之后将返回值修改为`[TensorDict,torch.Tensor,torch.Tensor,dict]`,这方便我们在ActorCritic同级的类中进行拆分处理. 要从历史版本的训练代码迁移到新版本,需要注意以下几点
 1. `ObservationCfg`

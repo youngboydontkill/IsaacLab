@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 from isaaclab.utils import configclass
-
+import torch
 from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
     LocomotionVelocityRoughEnvCfg,
 )
@@ -159,7 +159,7 @@ class ObservationsCfg:
         map_scan = ObsTerm(
             func=mdp.map_scan_base,
             params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-            noise=Unoise(n_min=-0.1, n_max=0.1),
+            # noise=Unoise(n_min=-0.1, n_max=0.1),
             clip=(-1.0, 1.0),
         )
         flatten_history_dim = False  # [B,H,D,...]
@@ -171,8 +171,7 @@ class ObservationsCfg:
             func=mdp.generated_commands, params={"command_name": "base_velocity"}
         )
         flatten_history_dim = False
-        history_length = 1
-
+        history_length = 5
         def __post_init__(self):
             self.enable_corruption = True
             self.concatenate_terms = True
@@ -182,28 +181,32 @@ class ObservationsCfg:
         """Observations for policy group."""
         base_lin_vel = ObsTerm(
             func=mdp.base_lin_vel, 
-            noise=Unoise(n_min=-0.1, n_max=0.1)
+            # noise=Unoise(n_min=-0.8, n_max=0.8)
         )
+        # base_lin_vel = ObsTerm(
+        # func=mdp.fixed_zero_vel,
+        # # noise=Unoise(n_min=-0.1, n_max=0.1)
+        # )
 
         # observation terms (order preserved)
         base_ang_vel = ObsTerm(
             func=mdp.base_ang_vel, 
-            noise=Unoise(n_min=-0.2, n_max=0.2)
+            # noise=Unoise(n_min=-0.2, n_max=0.2)
         )
         projected_gravity = ObsTerm(
             func=mdp.projected_gravity,
-            noise=Unoise(n_min=-0.05, n_max=0.05),
+            # noise=Unoise(n_min=-0.05, n_max=0.05),
         )
         joint_pos = ObsTerm(
             func=mdp.joint_pos_rel, 
-            noise=Unoise(n_min=-0.05, n_max=0.05)
+            # noise=Unoise(n_min=-0.05, n_max=0.05)
         )
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, 
-                            noise=Unoise(n_min=-1.5, n_max=1.5)
+                            # noise=Unoise(n_min=-1.5, n_max=1.5)
                             )
         actions = ObsTerm(func=mdp.last_action)
         flatten_history_dim = False
-        history_length = 1
+        history_length = 5
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -228,7 +231,7 @@ class ObservationsCfg:
                             )
         actions = ObsTerm(func=mdp.last_action)
         flatten_history_dim = False
-        history_length = 1
+        history_length = 5
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -314,7 +317,7 @@ class RewardsCfg:
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_yaw_frame_exp,
         # weight=5.0,
-        weight=4.0,
+        weight=3.0,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     track_ang_vel_z_exp = RewTerm(
@@ -359,19 +362,19 @@ class RewardsCfg:
     # yysy,感觉得加
     is_terminated = RewTerm(func=mdp.is_terminated, weight=-200.0)
 
-    feet_air_time = RewTerm(
-        func=mdp.feet_air_time_clip,
-        weight=10.0,
-        params={
-            "command_name": "base_velocity",
-            "sensor_cfg": SceneEntityCfg(
-                "contact_forces", body_names="leg_[l,r]6_link"
-            ),
-            "threshold_min": 0.2,
-            "threshold_max": 0.5,
-            "use_stance_mask": False,
-        },
-    )
+    # feet_air_time = RewTerm(
+    #     func=mdp.feet_air_time_clip,
+    #     weight=10.0,
+    #     params={
+    #         "command_name": "base_velocity",
+    #         "sensor_cfg": SceneEntityCfg(
+    #             "contact_forces", body_names="leg_[l,r]6_link"
+    #         ),
+    #         "threshold_min": 0.2,
+    #         "threshold_max": 0.5,
+    #         "use_stance_mask": False,
+    #     },
+    # )
 
     feet_slide = RewTerm(
         func=mdp.feet_slide,
@@ -490,71 +493,71 @@ class EventCfg:
     """Configuration for events."""
 
     # startup
-    physics_material = EventTerm(
-        func=mdp.randomize_rigid_body_material,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "static_friction_range": (0.2, 1.0),
-            "dynamic_friction_range": (0.1, 0.9),
-            "restitution_range": (0.0, 0.5),
-            "num_buckets": 64,
-            "make_consistent": True,
-        },
-    )
+    # physics_material = EventTerm(
+    #     func=mdp.randomize_rigid_body_material,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+    #         "static_friction_range": (0.2, 1.0),
+    #         "dynamic_friction_range": (0.1, 0.9),
+    #         "restitution_range": (0.0, 0.5),
+    #         "num_buckets": 64,
+    #         "make_consistent": True,
+    #     },
+    # )
 
-    add_base_mass = EventTerm(
-        func=mdp.randomize_rigid_body_mass,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base_link"),
-            "mass_distribution_params": (-2.0, 2.0),
-            "operation": "add",
-        },
-    )
+    # add_base_mass = EventTerm(
+    #     func=mdp.randomize_rigid_body_mass,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="base_link"),
+    #         "mass_distribution_params": (-2.0, 2.0),
+    #         "operation": "add",
+    #     },
+    # )
 
-    scale_link_mass = EventTerm(
-        func=mdp.randomize_rigid_body_mass,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot", body_names=["leg_.*_link", "zarm_.*_link"]
-            ),
-            "mass_distribution_params": (0.8, 1.2),
-            "operation": "scale",
-        },
-    )
+    # scale_link_mass = EventTerm(
+    #     func=mdp.randomize_rigid_body_mass,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot", body_names=["leg_.*_link", "zarm_.*_link"]
+    #         ),
+    #         "mass_distribution_params": (0.8, 1.2),
+    #         "operation": "scale",
+    #     },
+    # )
 
-    randomize_rigid_body_com = EventTerm(
-        func=mdp.randomize_base_body_com,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base_link"),
-            "com_range": {"x": (-0.1, 0.1), "y": (-0.1, 0.1), "z": (-0.1, 0.1)},
-        },
-    )
+    # randomize_rigid_body_com = EventTerm(
+    #     func=mdp.randomize_base_body_com,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="base_link"),
+    #         "com_range": {"x": (-0.1, 0.1), "y": (-0.1, 0.1), "z": (-0.1, 0.1)},
+    #     },
+    # )
 
-    scale_actuator_gains = EventTerm(
-        func=mdp.randomize_actuator_gains,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", joint_names=".*_joint"),
-            "stiffness_distribution_params": (0.8, 1.2),
-            "damping_distribution_params": (0.8, 1.2),
-            "operation": "scale",
-        },
-    )
+    # scale_actuator_gains = EventTerm(
+    #     func=mdp.randomize_actuator_gains,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", joint_names=".*_joint"),
+    #         "stiffness_distribution_params": (0.8, 1.2),
+    #         "damping_distribution_params": (0.8, 1.2),
+    #         "operation": "scale",
+    #     },
+    # )
 
-    scale_joint_parameters = EventTerm(
-        func=mdp.randomize_joint_parameters,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", joint_names=".*_joint"),
-            "friction_distribution_params": (1.0, 1.0),
-            "armature_distribution_params": (0.5, 1.5),
-            "operation": "scale",
-        },
-    )
+    # scale_joint_parameters = EventTerm(
+    #     func=mdp.randomize_joint_parameters,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", joint_names=".*_joint"),
+    #         "friction_distribution_params": (1.0, 1.0),
+    #         "armature_distribution_params": (0.5, 1.5),
+    #         "operation": "scale",
+    #     },
+    # )
 
     reset_base = EventTerm(
         func=mdp.reset_root_state_uniform,

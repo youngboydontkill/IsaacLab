@@ -84,20 +84,20 @@ ATTEN_ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
             proportion=0.1, slope_range=(0.0, 0.4), platform_width=3.0, border_width=0.25
         ),
         "hf_stepping_stones": terrain_gen.HfSteppingStonesTerrainCfg(
-            proportion=0.3,
+            proportion=0.4,
             # stone_height_max=0.15,
             # stone_width_range=(0.45, 0.75),
             # stone_distance_range=(0.15, 0.5),
             # platform_width=2.0,
             # holes_depth=-1.0,
             stone_height_max=0.0,
-            stone_width_range=(0.25, 0.55),
+            stone_width_range=(0.25, 0.45),
             stone_distance_range=(0.1, 0.25),
             platform_width=2.0,
             # holes_depth=-0.8
         ),
         "mesh_star": terrain_gen.MeshStarTerrainCfg(
-            proportion=0.2,
+            proportion=0.1,
             num_bars=6,
             bar_width_range=(0.2,0.5),
             bar_height_range=(5.0,10.0),

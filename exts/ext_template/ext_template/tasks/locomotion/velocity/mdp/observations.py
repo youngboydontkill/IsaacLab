@@ -279,3 +279,18 @@ def map_scan_base(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg, offset: floa
     # 需要注意,这里的shape是(W,L,3),而不是(L,W,3),因为默认是xy采样,因此会先变化x,
     # 然而先变化x说明先对L进行操作,因此第一个维度是W
     return height_scan.view(B, W, L, 3).permute(0,2,1,3)  # [B,L,W,3]
+
+def fixed_zero_vel(env: ManagerBasedEnv):
+    """
+    返回固定的零线速度 [0, 0, 0]
+    
+    参数:
+        env: 环境实例（框架会自动传入）
+    
+    返回:
+        torch.Tensor: 形状为 [num_envs, 3] 的零速度张量
+    """
+    # 获取环境数量，确保输出形状与环境匹配
+    num_envs = env.num_envs
+    # 返回形状为 [num_envs, 3] 的零张量，与其他观测项格式一致
+    return torch.zeros(num_envs, 3, device=env.device)

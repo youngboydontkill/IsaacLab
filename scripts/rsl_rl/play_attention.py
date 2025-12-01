@@ -60,6 +60,7 @@ import ext_template.tasks  # noqa: F401
 
 import copy
 from enc_actor_critic_exporter import export_enc_policy
+from enc_vel_export import export_enc_vel_policy
 
 def define_markers() -> VisualizationMarkers:
     """
@@ -96,7 +97,7 @@ def visualize_attention(obs:TensorDict, attention:torch.Tensor,
     W = lastest_scan.shape[2]
     # 这里换成的base frame, 所以需要最后进行一个rotation
     if (ray_aligment == 'yaw'):
-        last_scan_flatten = lastest_scan.view(-1,3)  # shape (B*L*W, 3)
+        last_scan_flatten = lastest_scan.reshape(-1, 3)
         height_scan = quat_apply_yaw(root_quat.repeat(1, L*W), last_scan_flatten)
         lastest_scan = height_scan.view(B,L,W,3)
     elif (ray_aligment == 'base'):
@@ -109,7 +110,8 @@ def visualize_attention(obs:TensorDict, attention:torch.Tensor,
     # 首先求取batch内最大的attention，然后归一化
     for env_idx in range(lastest_attention.size(0)):
         lastest_attention[env_idx, :] = lastest_attention[env_idx, :] / (torch.max(lastest_attention[env_idx, :]) + 1e-8)
-    lastest_attention = lastest_attention.view(-1)
+    # lastest_attention = lastest_attention.view(-1)
+    lastest_attention = lastest_attention.reshape(-1)
     # print(torch.max(lastest_attention))
     attention_indices = torch.zeros_like(lastest_attention,dtype=torch.int)
     for i in range(10):
@@ -167,6 +169,9 @@ def main():
     export_enc_policy(
         ppo_runner.alg.policy,obs=agent_cfg.policy_obs_keys, path=export_model_dir, filename="enc_policy_s45.onnx"
     )
+    export_enc_vel_policy(
+        ppo_runner.alg.policy,obs=agent_cfg.policy_obs_keys, path=export_model_dir, filename="enc_vel_policy_s45.onnx"
+    )
     # create markers :
     visualizer = define_markers()
     # reset environment
@@ -184,6 +189,7 @@ def main():
             visualize_attention(obs,attention,visualizer)
             # env stepping
             obs, _, _, _ = env.step(actions)
+            print("obs_map_scan:", obs['perception'].flatten())
             sim_step += 1
         if args_cli.video:
             timestep += 1

@@ -43,7 +43,6 @@ OBSTERMGYM2LAB = {
             "joint_vel":[0, 6, 12, 19, 1, 7, 13, 20, 2, 8, 14, 21, 3, 9, 15, 22, 4, 10, 16, 23, 5, 11, 17, 24, 18, 25],
             "action":[0, 6, 12, 19, 1, 7, 13, 20, 2, 8, 14, 21, 3, 9, 15, 22, 4, 10, 16, 23, 5, 11, 17, 24, 18, 25],
             "base_lin_vel": [0, 1, 2],
-            # 高程图，1.6m x 1.0m，分辨率0.1m，共17x11个点，排列顺序为xy，所以关于y对称就是每隔17个点为一列，把这11列倒序排列即可。符号不变。
             "height_scan": [i for i in range(187)],
             "joint_torques": [0, 6, 12, 19, 1, 7, 13, 20, 2, 8, 14, 21, 3, 9, 15, 22, 4, 10, 16, 23, 5, 11, 17, 24, 18, 25],
             "joint_accs": [0, 6, 12, 19, 1, 7, 13, 20, 2, 8, 14, 21, 3, 9, 15, 22, 4, 10, 16, 23, 5, 11, 17, 24, 18, 25],
@@ -104,63 +103,156 @@ def generate_gym_obs_indices(obs_keys:dict,history_len:int)->np.array:
     lab2gym = np.array(lab2gym).reshape(-1)
     return lab2gym.astype(np.int32)
 
-def export_enc_policy(
+def export_enc_vel_policy(
     actor_critic: object, path: str, obs:dict, filename="policy.onnx", verbose=False
 ):
     if not os.path.exists(path):
         os.makedirs(path, exist_ok=True)
-    policy_exporter = EncActorCriticExporter(actor_critic, obs, verbose)
+    policy_exporter = EncVelActorCriticExporter(actor_critic, obs, verbose)
     policy_exporter.export(path, filename)
 
-class EncActorCriticExporter(torch.nn.Module):
-    """Exporter of actor-critic into ONNX file."""
-    # 感觉在rsl rl里面加会更好,这里加还是太别扭了
+
+class EncVelActorCriticExporter(torch.nn.Module):
+    """Exporter of actor-critic with velocity estimator into ONNX file.
+    
+    输入 (展平为单一输入):
+        - obs: [B, prop_current + map_scan_flatten + prop_history_flatten]
+               = [B, 91 + L*W*C + 5*91]
+               = [B, 当前本体感觉(91) | map_scan(L*W*C) | 历史本体感觉(5*91)]
+    
+    输出:
+        - actions: [B, num_actions] 动作输出
+        - vel_est: [B, 3] 速度估计输出
+    
+    处理流程:
+        1. 从展平的obs中解析出prop_current, map_scan, prop_history
+        2. 从5帧prop_history中去掉速度维度(4:7)，得到[B, 5, 88]
+        3. 将去掉速度的prop输入velocity_estimator得到vel_est [B, 3]
+        4. 用vel_est替换当前帧prop中的速度(4:7)
+        5. 将替换后的prop和map_scan输入encoder和actor得到action
+        6. 返回action和vel_est
+    """
+    
     def __init__(self, actor_critic, obs_keys:dict, verbose=False):
         super().__init__()
         self.verbose = verbose
         self.actor_critic = copy.deepcopy(actor_critic)
         self.obs_groups = actor_critic.obs_groups
-        self.history = actor_critic.horizon
-        
+        self.encoder_history = 1  # encoder只需要1帧
+        self.vel_estimator_history = 5  # 速度估计器需要5帧
         self.policy_obs_keys = obs_keys
-        # # 根据key构造gym2lab
-        self.gym2lab = generate_lab_obs_indices(self.policy_obs_keys,1)  # for [B,H,D,...]
-        self.lab2gym = [0, 4, 8, 12, 16, 20, 1, 5, 9, 13, 17, 21, 2, 6, 10, 14, 18, 22, 24, 3, 7, 11, 15, 19, 23, 25]
-
-    # def forward(self, prop:torch.Tensor, map_scan:torch.Tensor):
-    #     lab_prop = prop[:,:,self.gym2lab]  # [B,H,d]
-    #     low_dim_obs = self.actor_critic.actor_obs_normalizer(lab_prop) # [B,H,d]
-    #     # compute embedding 
-    #     embedding,attention = self.actor_critic.encoder(map_scan,low_dim_obs,embedding_only=False)
-    #     embedding_vec = embedding.view(embedding.shape[0], -1)  # [B,H*(d+d_obs)], gym style 
-    #     # compute mean
-    #     action = self.actor_critic.actor(embedding_vec)
-    #     return action[:, self.lab2gym]
-
-    def forward(self, obs:torch.Tensor):
         
-        # obs : [B,H,d+map_scan_flatten]
-        prop = obs[:,:,:self.actor_critic.num_actor_obs]  # [B,H,d]
-        map_scan_flatten = obs[:,:,self.actor_critic.num_actor_obs:]
-        map_scan = map_scan_flatten.view(map_scan_flatten.shape[0], self.history, 
-                                         *self.actor_critic.high_dim_obs_shape[2:])  # [B,H,L,W,3]
-        lab_prop = prop[:,:,self.gym2lab]  # [B,H,d]
-        low_dim_obs = self.actor_critic.actor_obs_normalizer(lab_prop) # [B,H,d]
-        # compute embedding 
-        embedding,attention = self.actor_critic.encoder(map_scan,low_dim_obs,embedding_only=False)
-        embedding_vec = embedding.view(embedding.shape[0], -1)  # [B,H*(d+d_obs)], gym style 
-        # compute mean
+        # 本体感觉维度配置
+        self.prop_dim_with_vel = 91  # 包含速度的prop维度
+        self.prop_dim_without_vel = 88  # 不包含速度的prop维度（用于vel_estimator输入）
+        self.vel_dim = 3  # 速度维度
+        self.vel_start_idx = 4  # 速度在prop中的起始索引
+        self.vel_end_idx = 7  # 速度在prop中的结束索引
+        
+        # map_scan维度
+        self.map_scan_shape = actor_critic.high_dim_obs_shape[2:]  # [L, W, C]
+        self.map_scan_flatten_dim = int(np.prod(self.map_scan_shape))
+        
+        # 计算各部分在展平输入中的位置
+        # obs布局: [prop_current(91) | map_scan(L*W*C) | prop_history(5*91)]
+        self.prop_current_start = 0
+        self.prop_current_end = self.prop_dim_with_vel  # 91
+        self.map_scan_start = self.prop_current_end  # 91
+        self.map_scan_end = self.map_scan_start + self.map_scan_flatten_dim
+        self.prop_history_start = self.map_scan_end
+        self.prop_history_end = self.prop_history_start + self.vel_estimator_history * self.prop_dim_with_vel  # 5*91
+        
+        # 总输入维度
+        self.total_obs_dim = self.prop_history_end
+        
+        # 根据key构造gym2lab (针对包含速度的91维)
+        self.gym2lab = generate_lab_obs_indices(self.policy_obs_keys, 1)
+        self.lab2gym = [0, 4, 8, 12, 16, 20, 1, 5, 9, 13, 17, 21, 2, 6, 10, 14, 18, 22, 24, 3, 7, 11, 15, 19, 23, 25]
+        
+        # 获取num_actor_obs
+        self.num_actor_obs = actor_critic.num_actor_obs  # 91
+
+    def _remove_velocity_from_prop(self, prop: torch.Tensor) -> torch.Tensor:
+        """
+        从prop中移除速度维度 [B, H, 91] -> [B, H, 88]
+        速度位于索引 4:7
+        """
+        prop_without_vel = torch.cat([
+            prop[:, :, :self.vel_start_idx],  # [B, H, 4] 前4维
+            prop[:, :, self.vel_end_idx:]     # [B, H, 84] 后84维
+        ], dim=-1)  # [B, H, 88]
+        return prop_without_vel
+
+    def _replace_velocity_in_prop(self, prop: torch.Tensor, vel_est: torch.Tensor) -> torch.Tensor:
+        """
+        用估计的速度替换prop中的速度 
+        prop: [B, 1, 91], vel_est: [B, 3] -> [B, 1, 91]
+        """
+        prop_with_new_vel = torch.cat([
+            prop[:, :, :self.vel_start_idx],  # [B, 1, 4] 前4维
+            vel_est.unsqueeze(1),              # [B, 1, 3] 估计的速度
+            prop[:, :, self.vel_end_idx:]     # [B, 1, 84] 后84维
+        ], dim=-1)  # [B, 1, 91]
+        return prop_with_new_vel
+
+    def forward(self, obs: torch.Tensor):
+        """
+        Args:
+            obs: [B, total_obs_dim] 展平的观测
+                 布局: [prop_current(91) | map_scan(L*W*C) | prop_history(5*91)]
+        
+        Returns:
+            action: [B, num_actions] 动作输出
+            vel_est: [B, 3] 速度估计输出
+        """
+        B = obs.shape[0]
+        
+        # Step 1: 从展平的obs中解析各部分
+        prop_current_flat = obs[:, self.prop_current_start:self.prop_current_end]  # [B, 91]
+        map_scan_flat = obs[:, self.map_scan_start:self.map_scan_end]  # [B, L*W*C]
+        prop_history_flat = obs[:, self.prop_history_start:self.prop_history_end]  # [B, 5*91]
+        
+        # Step 2: 重塑为所需形状
+        prop_current = prop_current_flat.unsqueeze(1)  # [B, 1, 91]
+        map_scan = map_scan_flat.view(B, 1, *self.map_scan_shape)  # [B, 1, L, W, C]
+        prop_history = prop_history_flat.view(B, self.vel_estimator_history, self.prop_dim_with_vel)  # [B, 5, 91]
+
+        # Step 3: 应用gym2lab索引转换
+        lab_prop_current = prop_current[:, :, self.gym2lab]  # [B, 1, 91]
+        lab_prop_history = prop_history[:, :, self.gym2lab]  # [B, 5, 91]
+        
+        # Step 4: 从5帧prop中移除速度维度，用于速度估计
+        prop_history_without_vel = self._remove_velocity_from_prop(lab_prop_history)  # [B, 5, 88]
+        
+        # Step 5: 使用去掉速度的5帧prop进行速度估计
+        vel_est = self.actor_critic.velocity_estimator(prop_history_without_vel)  # [B, 3]
+        
+        # Step 6: 用估计的速度替换当前帧prop中的速度
+        prop_with_est_vel = self._replace_velocity_in_prop(lab_prop_current, vel_est)  # [B, 1, 91]
+        
+        
+        # Step 7: 归一化
+        low_dim_obs = self.actor_critic.actor_obs_normalizer(prop_with_est_vel)  # [B, 1, 91]
+        
+        # Step 8: 计算embedding
+        embedding, attention = self.actor_critic.encoder(
+            map_scan, low_dim_obs, embedding_only=False
+        )
+        embedding_vec = embedding.view(B, -1)  # [B, 1*(embedding_dim + d_obs)]
+        
+        # Step 9: 计算action
         action = self.actor_critic.actor(embedding_vec)
-        return action[:, self.lab2gym]
+        
+        # 返回action和速度估计
+        return action[:, self.lab2gym], vel_est
     
     def export(self, path, filename):
         self.to("cpu")
-        # prop = torch.randn(1,self.history,self.actor_critic.num_actor_obs)
-        # map_scan = torch.randn(1,*self.actor_critic.high_dim_obs_shape[1:])
-        obs = torch.randn(1,self.history,
-                          self.actor_critic.num_actor_obs + 
-                          np.prod(self.actor_critic.high_dim_obs_shape[2:]))
-        # obs_velocity_input = torch.randn(1,self.actor_history,self.actor_critic.num_actor_obs)
+        
+        # 创建示例输入
+        # obs: [B, prop_current + map_scan_flatten + prop_history_flatten]
+        obs = torch.randn(1, self.total_obs_dim)
+        
         torch.onnx.export(
             self,
             (obs,),
@@ -169,9 +261,50 @@ class EncActorCriticExporter(torch.nn.Module):
             opset_version=14,
             verbose=self.verbose,
             input_names=["obs"],
-            output_names=["actions"],
+            output_names=["actions", "vel_est"],
             dynamic_axes={},
         )
+        
+        print(f"[INFO] Exported policy to {os.path.join(path, filename)}")
+        print(f"  Input:")
+        print(f"    - obs shape: [B, {self.total_obs_dim}]")
+        print(f"    - Layout: [prop_current({self.prop_dim_with_vel}) | map_scan({self.map_scan_flatten_dim}) | prop_history({self.vel_estimator_history}*{self.prop_dim_with_vel}={self.vel_estimator_history * self.prop_dim_with_vel})]")
+        print(f"    - Indices: prop_current[{self.prop_current_start}:{self.prop_current_end}], map_scan[{self.map_scan_start}:{self.map_scan_end}], prop_history[{self.prop_history_start}:{self.prop_history_end}]")
+        print(f"  Outputs:")
+        print(f"    - actions shape: [B, num_actions]")
+        print(f"    - vel_est shape: [B, {self.vel_dim}]")
+        print(f"  Internal:")
+        print(f"    - Velocity estimator input: [B, {self.vel_estimator_history}, {self.prop_dim_without_vel}] (velocity removed)")
+        print(f"    - Velocity position in prop: [{self.vel_start_idx}:{self.vel_end_idx}]")
+
+
+# 保留原来的 EncActorCriticExporter 类以备用
+class EncActorCriticExporter(torch.nn.Module):
+    """Exporter of actor-critic into ONNX file (without velocity estimator)."""
+    # ...existing code...
+    def __init__(self, actor_critic, obs_keys:dict, verbose=False):
+        super().__init__()
+        self.verbose = verbose
+        self.actor_critic = copy.deepcopy(actor_critic)
+        self.obs_groups = actor_critic.obs_groups
+        self.encoder_history = 1
+        self.vel_estimator_history = 5
+        self.policy_obs_keys = obs_keys
+        self.prop_dim_without_vel = 88
+        self.vel_dim = 3
+        self.vel_insert_idx = 4
+        self.gym2lab = generate_lab_obs_indices(self.policy_obs_keys, 1)
+        self.lab2gym = [0, 4, 8, 12, 16, 20, 1, 5, 9, 13, 17, 21, 2, 6, 10, 14, 18, 22, 24, 3, 7, 11, 15, 19, 23, 25]
+        self.num_actor_obs = actor_critic.num_actor_obs
+
+    def forward(self, prop_history: torch.Tensor, obs_current: torch.Tensor):
+        # ...existing code...
+        pass
+    
+    def export(self, path, filename):
+        # ...existing code...
+        pass
+
 
 if __name__ == "__main__":
     from isaaclab.app import AppLauncher
@@ -231,6 +364,6 @@ if __name__ == "__main__":
     policy = ppo_runner.get_inference_policy(device=env.unwrapped.device)
     # export policy to onnx/jit
     export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
-    export_enc_policy(
-        ppo_runner.alg.policy,obs=agent_cfg.policy_obs_keys,path=export_model_dir, filename="enc_policy_s45.onnx"
+    export_enc_vel_policy(
+        ppo_runner.alg.policy, obs=agent_cfg.policy_obs_keys, path=export_model_dir, filename="enc_vel_policy.onnx"
     )

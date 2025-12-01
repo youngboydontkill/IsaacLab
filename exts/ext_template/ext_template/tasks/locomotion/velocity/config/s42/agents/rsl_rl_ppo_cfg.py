@@ -164,13 +164,18 @@ class KuavoS42FlatHugWBCPPORunnerCfg(KuavoS42RoughPPORunnerCfg):
 
 @configclass
 class RslRlPpoEncActorCriticCfg(RslRlPpoActorCriticCfg):
-    class_name = "EncActorCritic"
+    class_name = "EncVelActorCritic"   #EncVelActorCritic EncActorCritic
     embedding_dim:int = 64
     load_mask:int = 7+8
     # 这两个取代原有的empirical_normalization
     actor_obs_normalization=True 
     critic_obs_normalization=True
     output_attention=False  # policy是否输出attention,这里主要用于可视化
+    velocity_estimation_enabled: bool = False  # 是否启用速度估计器
+
+@configclass
+class RslRlPpoEncAlgorithmCfg(RslRlPpoAlgorithmCfg):
+    velocity_estimation_enabled: bool = False  # 是否启用速度估计器
 
 @configclass 
 class KuavoAttentionRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
@@ -193,9 +198,10 @@ class KuavoAttentionRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
             critic_hidden_dims=[512, 256, 128],
             activation="elu",
             embedding_dim=64,
-            load_mask=15 
+            load_mask=31,
+            velocity_estimation_enabled = False
         )
-    algorithm = RslRlPpoAlgorithmCfg(
+    algorithm = RslRlPpoEncAlgorithmCfg(
         value_loss_coef=1.0,
         use_clipped_value_loss=True,
         clip_param=0.2,
@@ -207,7 +213,8 @@ class KuavoAttentionRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         gamma=0.99,
         lam=0.95,
         desired_kl=0.01,
-        max_grad_norm=1.0
+        max_grad_norm=1.0,
+        velocity_estimation_enabled = True
     )
     def __post_init__(self):
         super().__post_init__()
@@ -244,8 +251,9 @@ class KuavoAttentionRoughPPORunnerPlayCfg(KuavoAttentionRoughPPORunnerCfg):
             critic_hidden_dims=[512, 256, 128],
             activation="elu",
             embedding_dim=64,
-            load_mask=15,
+            load_mask=31,
             output_attention=True,
+            velocity_estimation_enabled = True
         )
     def __post_init__(self):
         super().__post_init__()

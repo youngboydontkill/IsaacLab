@@ -191,18 +191,18 @@ class ObservationsCfg:
         # observation terms (order preserved)
         base_ang_vel = ObsTerm(
             func=mdp.base_ang_vel, 
-            # noise=Unoise(n_min=-0.2, n_max=0.2)
+            noise=Unoise(n_min=-0.2, n_max=0.2)
         )
         projected_gravity = ObsTerm(
             func=mdp.projected_gravity,
-            # noise=Unoise(n_min=-0.05, n_max=0.05),
+            noise=Unoise(n_min=-0.05, n_max=0.05),
         )
         joint_pos = ObsTerm(
             func=mdp.joint_pos_rel, 
-            # noise=Unoise(n_min=-0.05, n_max=0.05)
+            noise=Unoise(n_min=-0.05, n_max=0.05)
         )
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, 
-                            # noise=Unoise(n_min=-1.5, n_max=1.5)
+                            noise=Unoise(n_min=-1.5, n_max=1.5)
                             )
         actions = ObsTerm(func=mdp.last_action)
         flatten_history_dim = False
@@ -317,7 +317,7 @@ class RewardsCfg:
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_yaw_frame_exp,
         # weight=5.0,
-        weight=3.0,
+        weight=5.0,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     track_ang_vel_z_exp = RewTerm(
@@ -362,19 +362,19 @@ class RewardsCfg:
     # yysy,感觉得加
     is_terminated = RewTerm(func=mdp.is_terminated, weight=-200.0)
 
-    # feet_air_time = RewTerm(
-    #     func=mdp.feet_air_time_clip,
-    #     weight=10.0,
-    #     params={
-    #         "command_name": "base_velocity",
-    #         "sensor_cfg": SceneEntityCfg(
-    #             "contact_forces", body_names="leg_[l,r]6_link"
-    #         ),
-    #         "threshold_min": 0.2,
-    #         "threshold_max": 0.5,
-    #         "use_stance_mask": False,
-    #     },
-    # )
+    feet_air_time = RewTerm(
+        func=mdp.feet_air_time_clip,
+        weight=10.0,
+        params={
+            "command_name": "base_velocity",
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names="leg_[l,r]6_link"
+            ),
+            "threshold_min": 0.2,
+            "threshold_max": 0.5,
+            "use_stance_mask": False,
+        },
+    )
 
     feet_slide = RewTerm(
         func=mdp.feet_slide,
@@ -664,8 +664,8 @@ class KuavoAttentionRoughEnvCfg_PLAY(KuavoAttentionRoughEnvCfg):
         # remove random pushing event
         # self.events.base_external_force_torque = None
 
-        self.commands.base_velocity.ranges.lin_vel_x = (-1.0, 1.0)
-        self.commands.base_velocity.ranges.lin_vel_y = (-0.5, 0.5)
-        self.commands.base_velocity.ranges.ang_vel_z = (-0.5, 0.5)
+        self.commands.base_velocity.ranges.lin_vel_x = (0.6, 0.6)
+        self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
+        self.commands.base_velocity.ranges.ang_vel_z = (0, 0.0)
         # self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
         # self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)

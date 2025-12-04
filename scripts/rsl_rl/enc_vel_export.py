@@ -144,7 +144,7 @@ class EncVelActorCriticExporter(torch.nn.Module):
         
         # 本体感觉维度配置
         self.prop_dim_with_vel = 91  # 包含速度的prop维度
-        self.prop_dim_without_vel = 88  # 不包含速度的prop维度（用于vel_estimator输入）
+        self.prop_dim_without_vel = 84  # 不包含速度的prop维度（用于vel_estimator输入） 去除command
         self.vel_dim = 3  # 速度维度
         self.vel_start_idx = 4  # 速度在prop中的起始索引
         self.vel_end_idx = 7  # 速度在prop中的结束索引
@@ -177,10 +177,12 @@ class EncVelActorCriticExporter(torch.nn.Module):
         从prop中移除速度维度 [B, H, 91] -> [B, H, 88]
         速度位于索引 4:7
         """
-        prop_without_vel = torch.cat([
-            prop[:, :, :self.vel_start_idx],  # [B, H, 4] 前4维
-            prop[:, :, self.vel_end_idx:]     # [B, H, 84] 后84维
-        ], dim=-1)  # [B, H, 88]
+        # prop_without_vel = torch.cat([
+        #     prop[:, :, :self.vel_start_idx],  # [B, H, 4] 前4维
+        #     prop[:, :, self.vel_end_idx:]     # [B, H, 84] 后84维
+        # ], dim=-1)  # [B, H, 88]
+        # return prop_without_vel
+        prop_without_vel = prop[:,:,self.vel_end_idx:]
         return prop_without_vel
 
     def _replace_velocity_in_prop(self, prop: torch.Tensor, vel_est: torch.Tensor) -> torch.Tensor:
@@ -214,7 +216,10 @@ class EncVelActorCriticExporter(torch.nn.Module):
         
         # Step 2: 重塑为所需形状
         prop_current = prop_current_flat.unsqueeze(1)  # [B, 1, 91]
-        map_scan = map_scan_flat.view(B, 1, *self.map_scan_shape)  # [B, 1, L, W, C]
+
+        L, W, C = self.map_scan_shape  # 目标形状
+        map_scan = map_scan_flat.view(B, 1, W, L, C).transpose(2, 3)  # [B, 1, L, W, C]
+        # map_scan = map_scan_flat.view(B, 1, *self.map_scan_shape)  # [B, 1, L, W, C]
         prop_history = prop_history_flat.view(B, self.vel_estimator_history, self.prop_dim_with_vel)  # [B, 5, 91]
 
         # Step 3: 应用gym2lab索引转换

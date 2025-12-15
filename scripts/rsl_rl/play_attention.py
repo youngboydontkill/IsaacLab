@@ -166,11 +166,13 @@ def main():
 
     # export policy to onnx/jit
     export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
+
+    combined_obs_keys = agent_cfg.command_obs_keys + agent_cfg.policy_obs_keys
     export_enc_policy(
-        ppo_runner.alg.policy,obs=agent_cfg.policy_obs_keys, path=export_model_dir, filename="enc_policy_s45.onnx"
+        ppo_runner.alg.policy,obs=combined_obs_keys, path=export_model_dir, filename="enc_policy_s45.onnx"
     )
     export_enc_vel_policy(
-        ppo_runner.alg.policy,obs=agent_cfg.policy_obs_keys, path=export_model_dir, filename="enc_vel_policy_s45.onnx"
+        ppo_runner.alg.policy,obs=combined_obs_keys, path=export_model_dir, filename="enc_vel_policy_s45.onnx"
     )
     # create markers :
     visualizer = define_markers()
@@ -189,7 +191,6 @@ def main():
             visualize_attention(obs,attention,visualizer)
             # env stepping
             obs, _, _, _ = env.step(actions)
-            print("obs_map_scan:", obs['perception'].flatten())
             sim_step += 1
         if args_cli.video:
             timestep += 1

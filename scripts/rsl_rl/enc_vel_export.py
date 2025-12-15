@@ -132,7 +132,7 @@ class EncVelActorCriticExporter(torch.nn.Module):
         5. 将替换后的prop和map_scan输入encoder和actor得到action
         6. 返回action和vel_est
     """
-    
+    # 因为在对称性增强时将command分离了出来：policy_obs_key中少了4维度。
     def __init__(self, actor_critic, obs_keys:dict, verbose=False):
         super().__init__()
         self.verbose = verbose

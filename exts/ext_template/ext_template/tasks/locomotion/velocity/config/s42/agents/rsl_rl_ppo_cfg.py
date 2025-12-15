@@ -221,22 +221,24 @@ class KuavoAttentionRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 
         # 默认是没有对称性增强的，需要手动在这里设置以方便支持不同policy的obs 
         # step 1 : 设置好history length和观测的key
-        self.history_len = 1 
+        self.history_len = 5 
         # TODO : 这里的数据增强应该需要重新设计支持tensordict
-        self.policy_obs_keys = ["cmd","base_lin_vel","base_ang_vel","gravity","joint_pos","joint_vel","action"]
-        self.privileged_obs_keys = ["cmd","base_lin_vel","base_ang_vel","gravity","joint_pos","joint_vel","action"]
-        # SymmetryAug.clear()
-        # SymmetryAug.register_obs("policy",self.policy_obs_keys)
-        # SymmetryAug.register_obs("privileged",self.privileged_obs_keys)
-        # SymmetryAug.register_obs_high_dim("perception",mirror_scan_height)
+        self.policy_obs_keys = ["base_lin_vel","base_ang_vel","gravity","joint_pos","joint_vel","action"]
+        self.privileged_obs_keys = ["base_lin_vel","base_ang_vel","gravity","joint_pos","joint_vel","action"]
+        self.command_obs_keys = ["cmd"]
+        SymmetryAug.clear()
+        SymmetryAug.register_obs("policy",self.policy_obs_keys,self.history_len)
+        SymmetryAug.register_obs("privileged",self.privileged_obs_keys,self.history_len)
+        SymmetryAug.register_obs("command",self.command_obs_keys,self.history_len)
+        SymmetryAug.register_obs_high_dim("perception",mirror_scan_height)
 
-        # self.algorithm.symmetry_cfg = RslRlSymmetryCfg(
-        #     use_data_augmentation=True, 
-        #     use_mirror_loss=True,
-        #     mirror_loss_coeff=1.0, 
-        #     # data_augmentation_func=SymmetryAug.data_augmentation_dict  # 这么写有点问题,他会把整个SymmetryAug.xxx识别为一个callable,但是实际只有后面是
-        #     data_augmentation_func=data_augmentation_dict
-        # )
+        self.algorithm.symmetry_cfg = RslRlSymmetryCfg(
+            use_data_augmentation=True, 
+            use_mirror_loss=True,
+            mirror_loss_coeff=1.0, 
+            # data_augmentation_func=SymmetryAug.data_augmentation_dict  # 这么写有点问题,他会把整个SymmetryAug.xxx识别为一个callable,但是实际只有后面是
+            data_augmentation_func=data_augmentation_dict
+        )
 
 @configclass 
 class KuavoAttentionRoughPPORunnerPlayCfg(KuavoAttentionRoughPPORunnerCfg):

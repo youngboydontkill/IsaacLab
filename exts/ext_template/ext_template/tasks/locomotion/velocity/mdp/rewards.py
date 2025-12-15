@@ -180,6 +180,13 @@ def feet_contact_without_cmd(env: ManagerBasedRLEnv, command_name: str,sensor_cf
     reward *= torch.clamp(-env.scene["robot"].data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
     return reward
 
+def dof_vel_l2(
+    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+
+    joint_vel = asset.data.joint_vel[:, asset_cfg.joint_ids]
+    return torch.sum(joint_vel**2, dim=1)
 
 def joint_power_l2(
     env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
@@ -295,6 +302,20 @@ def track_ang_vel_z_world_exp(
     # reward *= torch.clamp(-env.scene["robot"].data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
     return reward
 
+
+def track_default_arm_pos(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    alpha: float = 5.0,
+) -> torch.Tensor:
+    """奖励手臂关节追踪默认位置"""
+    asset: Articulation = env.scene[asset_cfg.name]
+    arm_joint_pos = asset.data.joint_pos[:, asset_cfg.joint_ids]  # [num_envs, num_joints]
+
+    sq_dist = torch.sum((arm_joint_pos-0.0)**2, dim=1)
+    reward = torch.exp(-alpha * sq_dist)
+
+    return reward
 
 def contact_forces(env: ManagerBasedRLEnv, threshold: float, sensor_cfg: SceneEntityCfg, violation_max: float = torch.inf) -> torch.Tensor:
     """Penalize contact forces as the amount of violations of the net contact force."""

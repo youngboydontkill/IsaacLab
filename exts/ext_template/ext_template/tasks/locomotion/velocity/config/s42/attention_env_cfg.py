@@ -181,7 +181,7 @@ class ObservationsCfg:
         """Observations for policy group."""
         base_lin_vel = ObsTerm(
             func=mdp.base_lin_vel, 
-            # noise=Unoise(n_min=-0.8, n_max=0.8)
+            noise=Unoise(n_min=-0.8, n_max=0.8)
         )
         # base_lin_vel = ObsTerm(
         # func=mdp.fixed_zero_vel,
@@ -362,19 +362,32 @@ class RewardsCfg:
     # yysy,感觉得加
     is_terminated = RewTerm(func=mdp.is_terminated, weight=-200.0)
 
+    # feet_air_time = RewTerm(
+    #     func=mdp.feet_air_time_clip,
+    #     weight=10.0,
+    #     params={
+    #         "command_name": "base_velocity",
+    #         "sensor_cfg": SceneEntityCfg(
+    #             "contact_forces", body_names="leg_[l,r]6_link"
+    #         ),
+    #         "threshold_min": 0.2,
+    #         "threshold_max": 0.5,
+    #         "use_stance_mask": False,
+    #     },
+    # )
     feet_air_time = RewTerm(
-        func=mdp.feet_air_time_clip,
-        weight=10.0,
+        func=mdp.feet_air_time_positive_biped,
+        weight=1.0,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg(
                 "contact_forces", body_names="leg_[l,r]6_link"
             ),
-            "threshold_min": 0.2,
-            "threshold_max": 0.5,
-            "use_stance_mask": False,
+            "threshold": 0.5,
+            "use_stance_mask": True,
         },
     )
+
 
     feet_slide = RewTerm(
         func=mdp.feet_slide,
@@ -386,6 +399,24 @@ class RewardsCfg:
             "asset_cfg": SceneEntityCfg("robot", body_names="leg_[l,r]6_link"),
         },
     )
+
+    track_default_arm_pos = RewTerm(
+        func=mdp.track_default_arm_pos,
+        weight=1.0,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    "zarm_l2_joint", "zarm_l3_joint", "zarm_l5_joint",
+                    "zarm_l6_joint", "zarm_l7_joint",
+                    "zarm_r2_joint", "zarm_r3_joint", "zarm_r5_joint",
+                    "zarm_r6_joint", "zarm_r7_joint",
+                ]
+            ),
+            "alpha": 5.0
+        }
+    )
+
     feet_contact_without_cmd = RewTerm(
         func=mdp.feet_contact_without_cmd,
         weight=0.4,
@@ -434,7 +465,7 @@ class RewardsCfg:
 
     stand_still_without_cmd = RewTerm(
         func=mdp.stand_still_without_cmd,
-        weight=-1.0,
+        weight=-3.0,
         params={
             "command_name": "base_velocity",
             "use_stance_mask": False,
@@ -664,7 +695,7 @@ class KuavoAttentionRoughEnvCfg_PLAY(KuavoAttentionRoughEnvCfg):
         # remove random pushing event
         # self.events.base_external_force_torque = None
 
-        self.commands.base_velocity.ranges.lin_vel_x = (0.6, 0.6)
+        self.commands.base_velocity.ranges.lin_vel_x = (1, 1)
         self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
         self.commands.base_velocity.ranges.ang_vel_z = (0, 0.0)
         # self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)

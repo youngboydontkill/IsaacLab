@@ -58,31 +58,31 @@ ATTEN_ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
     use_cache=False,
     sub_terrains={
         "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
-            proportion=0.1,
+            proportion=0.2,
             step_height_range=(0.1, 0.2),
             step_width=0.30,
             platform_width=3.0,
             border_width=0.25,
         ),
         "pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
-            proportion=0.1,
-            step_height_range=(0.1, 0.15),
+            proportion=0.2,
+            step_height_range=(0.1, 0.2),
             step_width=0.30,
             platform_width=3.0,
             border_width=0.25,
         ),
-        "boxes": terrain_gen.MeshRandomGridTerrainCfg(
-            proportion=0.1, grid_width=0.75, grid_height_range=(0.0, 0.15), platform_width=3.0
-        ),
+        # "boxes": terrain_gen.MeshRandomGridTerrainCfg(
+        #     proportion=0.1, grid_width=0.75, grid_height_range=(0.0, 0.15), platform_width=3.0
+        # ),
         "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
-            proportion=0.05, noise_range=(0.0, 0.05), noise_step=0.01, border_width=0.25, downsampled_scale=0.2,
+            proportion=0.1, noise_range=(0.0, 0.05), noise_step=0.01, border_width=0.25, downsampled_scale=0.2,
         ),
-        "hf_pyramid_slope": terrain_gen.HfPyramidSlopedTerrainCfg(
-            proportion=0.05, slope_range=(0.0, 0.4), platform_width=3.0, border_width=0.25
-        ),
-        "hf_pyramid_slope_inv": terrain_gen.HfInvertedPyramidSlopedTerrainCfg(
-            proportion=0.1, slope_range=(0.0, 0.4), platform_width=3.0, border_width=0.25
-        ),
+        # "hf_pyramid_slope": terrain_gen.HfPyramidSlopedTerrainCfg(
+        #     proportion=0.05, slope_range=(0.0, 0.4), platform_width=3.0, border_width=0.25
+        # ),
+        # "hf_pyramid_slope_inv": terrain_gen.HfInvertedPyramidSlopedTerrainCfg(
+        #     proportion=0.1, slope_range=(0.0, 0.4), platform_width=3.0, border_width=0.25
+        # ),
         # "hf_stepping_stones": terrain_gen.HfSteppingStonesTerrainCfg(
         #     proportion=0.4,
         #     # stone_height_max=0.15,
@@ -97,7 +97,7 @@ ATTEN_ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
         #     # holes_depth=-0.8
         # ),
         "mesh_star": terrain_gen.MeshStarTerrainCfg(
-            proportion=0.1,
+            proportion=0.3,
             num_bars=6,
             bar_width_range=(0.2,0.5),
             bar_height_range=(5.0,10.0),

@@ -203,3 +203,6 @@ python scripts/rsl_rl/play_attention.py \
     另外, 在新版rsl rl中移除了`empirical_normalization`属性,如果需要使用经验归一化,可以在`policy`中设置`actor_obs_normalization`和`critic_obs_normalization`属性,具体参考`RslRlPpoActorCriticCfg`的文档.
 3. `data_augmentation`.
    由于`obs`的类型变了,因此对称性增强的函数原型也发生了变化,这里将对称性增强的相关代码都集成到了一个python文件中,方便使用. 只需要根据前面的cfg设置好key就可以了, 只需要记得`flatten_history_dim=True`使用`SymmetryAug2D`,`flatten_history_dim=False`使用`SymmetryAug`.即可.
+
+### CENet 训练配置
+在rsl_rl_ppo.cfg中新增KuavoAttentionDreamWAQPPORunnerCfg类，为配置CENet类。load_mask = 41为加载CENet

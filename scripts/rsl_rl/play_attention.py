@@ -60,7 +60,7 @@ import ext_template.tasks  # noqa: F401
 
 import copy
 from enc_actor_critic_exporter import export_enc_policy
-from enc_vel_export import export_enc_vel_policy
+from enc_vel_export import export_enc_vel_policy,export_velocity_estimator
 
 def define_markers() -> VisualizationMarkers:
     """
@@ -159,6 +159,7 @@ def main():
     print(f"[INFO]: Loading model checkpoint from: {resume_path}")
     # load previously trained model
     ppo_runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+    print(f"[play_attention] resume_path = {resume_path}")
     ppo_runner.load(resume_path)
 
     # obtain the trained policy for inference
@@ -168,12 +169,14 @@ def main():
     export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
 
     combined_obs_keys = agent_cfg.command_obs_keys + agent_cfg.policy_obs_keys
+    # 对称性增强时把policy_obs_keys改成combined_obs_keys
     export_enc_policy(
         ppo_runner.alg.policy,obs=combined_obs_keys, path=export_model_dir, filename="enc_policy_s45.onnx"
     )
     export_enc_vel_policy(
         ppo_runner.alg.policy,obs=combined_obs_keys, path=export_model_dir, filename="enc_vel_policy_s45.onnx"
     )
+    export_velocity_estimator(ppo_runner.alg.policy,obs=combined_obs_keys, path=export_model_dir, filename="velocity_estimator_s45.onnx")
     # create markers :
     visualizer = define_markers()
     # reset environment

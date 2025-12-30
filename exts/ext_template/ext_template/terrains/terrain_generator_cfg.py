@@ -58,8 +58,8 @@ ATTEN_ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
     use_cache=False,
     sub_terrains={
         "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
-            proportion=0.2,
-            step_height_range=(0.1, 0.2),
+            proportion=0.3,
+            step_height_range=(0.1, 0.3),
             step_width=0.30,
             platform_width=3.0,
             border_width=0.25,
@@ -97,7 +97,7 @@ ATTEN_ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
         #     # holes_depth=-0.8
         # ),
         "mesh_star": terrain_gen.MeshStarTerrainCfg(
-            proportion=0.3,
+            proportion=0.2,
             num_bars=6,
             bar_width_range=(0.2,0.5),
             bar_height_range=(5.0,10.0),

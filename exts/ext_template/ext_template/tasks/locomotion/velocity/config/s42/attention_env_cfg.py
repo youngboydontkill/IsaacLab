@@ -160,7 +160,7 @@ class ObservationsCfg:
             func=mdp.map_scan_base,
             params={"sensor_cfg": SceneEntityCfg("height_scanner")},
             # noise=Unoise(n_min=-0.1, n_max=0.1),
-            clip=(-1.0, 1.0),
+            clip=(-3.0, 2.0),
         )
         flatten_history_dim = False  # [B,H,D,...]
         history_length = 1
@@ -317,12 +317,12 @@ class RewardsCfg:
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_yaw_frame_exp,
         # weight=5.0,
-        weight=5.0,
+        weight=4.0,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     track_ang_vel_z_exp = RewTerm(
         func=mdp.track_ang_vel_z_world_exp,
-        weight=3.0,
+        weight=4.0,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     # -- penalties
@@ -377,7 +377,7 @@ class RewardsCfg:
     # )
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_positive_biped,
-        weight=1.0,
+        weight=1,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg(
@@ -402,7 +402,7 @@ class RewardsCfg:
 
     track_default_arm_pos = RewTerm(
         func=mdp.track_default_arm_pos,
-        weight=1.0,
+        weight=6.0,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -465,7 +465,7 @@ class RewardsCfg:
 
     stand_still_without_cmd = RewTerm(
         func=mdp.stand_still_without_cmd,
-        weight=-3.0,
+        weight=-10.0,
         params={
             "command_name": "base_velocity",
             "use_stance_mask": False,
@@ -494,6 +494,26 @@ class RewardsCfg:
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=["leg_l[5,6]_joint", "leg_r[5,6]_joint"])
         },
+    )
+    feet_too_near = RewTerm(
+        func=mdp.feet_too_near_humanoid,
+        weight=-5.0,
+    )
+    fly = RewTerm(
+        func=mdp.fly,
+        weight=-10.0,
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="leg_[l,r]6_link"), "threshold": 1.0},
+    )
+    # 单加这个，看见台阶直接跪了
+    feet_solid_contact = RewTerm(
+        func=mdp.feet_solid_contact,
+        weight=-0.05,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="leg_[l,r]6_link"), 
+            "sensor_cfg1": SceneEntityCfg("Feet_L_scanner"),
+            "sensor_cfg2": SceneEntityCfg("Feet_R_scanner"),
+            "threshold": 5.0,
+            "feet_height_threshold": 0.13},
     )
 
 
@@ -695,7 +715,7 @@ class KuavoAttentionRoughEnvCfg_PLAY(KuavoAttentionRoughEnvCfg):
         # remove random pushing event
         # self.events.base_external_force_torque = None
 
-        self.commands.base_velocity.ranges.lin_vel_x = (1, 1)
+        self.commands.base_velocity.ranges.lin_vel_x = (0, 0.8)
         self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
         self.commands.base_velocity.ranges.ang_vel_z = (0, 0.0)
         # self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)

@@ -112,6 +112,27 @@ def export_enc_vel_policy(
     policy_exporter.export(path, filename)
 
 
+def export_velocity_estimator(
+    actor_critic: object,
+    path: str,
+    obs: dict,
+    filename: str = "velocity_estimator.onnx",
+    verbose: bool = False,
+):
+    """Export velocity estimator as a standalone ONNX.
+
+    Notes:
+        - The exported model only depends on the low-dim proprioceptive history.
+        - Input is a flattened tensor that contains ONLY the history prop (5*91 by default).
+          This mirrors the layout used inside :class:`EncVelActorCriticExporter` but keeps the
+          interface minimal for deployment.
+    """
+    if not os.path.exists(path):
+        os.makedirs(path, exist_ok=True)
+    vel_exporter = VelocityEstimatorExporter(actor_critic, obs, verbose)
+    vel_exporter.export(path, filename)
+
+
 class EncVelActorCriticExporter(torch.nn.Module):
     """Exporter of actor-critic with velocity estimator into ONNX file.
     
@@ -174,7 +195,7 @@ class EncVelActorCriticExporter(torch.nn.Module):
 
     def _remove_velocity_from_prop(self, prop: torch.Tensor) -> torch.Tensor:
         """
-        从prop中移除速度维度 [B, H, 91] -> [B, H, 88]
+        从prop中移除速度维度 [B, H, 91] -> [B, H, 84]
         速度位于索引 4:7
         """
         # prop_without_vel = torch.cat([
@@ -218,6 +239,7 @@ class EncVelActorCriticExporter(torch.nn.Module):
         prop_current = prop_current_flat.unsqueeze(1)  # [B, 1, 91]
 
         L, W, C = self.map_scan_shape  # 目标形状
+        # 输入的  [B,1,W,L,3]
         map_scan = map_scan_flat.view(B, 1, W, L, C).transpose(2, 3)  # [B, 1, L, W, C]
         # map_scan = map_scan_flat.view(B, 1, *self.map_scan_shape)  # [B, 1, L, W, C]
         prop_history = prop_history_flat.view(B, self.vel_estimator_history, self.prop_dim_with_vel)  # [B, 5, 91]
@@ -281,6 +303,78 @@ class EncVelActorCriticExporter(torch.nn.Module):
         print(f"  Internal:")
         print(f"    - Velocity estimator input: [B, {self.vel_estimator_history}, {self.prop_dim_without_vel}] (velocity removed)")
         print(f"    - Velocity position in prop: [{self.vel_start_idx}:{self.vel_end_idx}]")
+
+
+class VelocityEstimatorExporter(torch.nn.Module):
+    """Standalone exporter for :attr:`actor_critic.velocity_estimator`.
+
+    Input (flattened):
+        - prop_history_flat: [B, vel_estimator_history * prop_dim_with_vel]
+          Default: [B, 5*91]
+
+    Output:
+        - vel_est: [B, 3]
+
+    Internal:
+        - Applies the same gym->lab index mapping as training/export.
+        - Removes velocity dims (4:7) to match estimator input (d_obs=84 in your current policy).
+    """
+
+    def __init__(self, actor_critic, obs_keys: dict, verbose: bool = False):
+        super().__init__()
+        self.verbose = verbose
+        self.actor_critic = copy.deepcopy(actor_critic)
+
+        # Keep these in sync with EncVelActorCriticExporter
+        self.vel_estimator_history = 5
+        self.prop_dim_with_vel = 91
+        self.vel_start_idx = 4
+        self.vel_end_idx = 7
+
+        # estimator input dim after removing velocity dims (and, in your current setup, removing command)
+        # Here we mimic EncVelActorCriticExporter._remove_velocity_from_prop implementation.
+        self.prop_dim_without_vel = 84
+
+        # Indices mapping: gym -> lab for a single frame (91-dim)
+        self.policy_obs_keys = obs_keys
+        self.gym2lab = generate_lab_obs_indices(self.policy_obs_keys, 1)
+
+        self.total_input_dim = self.vel_estimator_history * self.prop_dim_with_vel
+
+    def _remove_velocity_from_prop(self, prop: torch.Tensor) -> torch.Tensor:
+        # Keep consistent with EncVelActorCriticExporter
+        return prop[:, :, self.vel_end_idx:]
+
+    def forward(self, prop_history_flat: torch.Tensor):
+        """Args:
+        prop_history_flat: [B, 5*91] flattened history in *gym* term ordering.
+        """
+        B = prop_history_flat.shape[0]
+        prop_history = prop_history_flat.view(B, self.vel_estimator_history, self.prop_dim_with_vel)
+        # convert gym ordering to lab ordering for each frame
+        lab_prop_history = prop_history[:, :, self.gym2lab]
+        prop_history_without_vel = self._remove_velocity_from_prop(lab_prop_history)
+        vel_est = self.actor_critic.velocity_estimator(prop_history_without_vel)
+        return vel_est
+
+    def export(self, path: str, filename: str):
+        self.to("cpu")
+        example_inp = torch.randn(1, self.total_input_dim)
+        out_path = os.path.join(path, filename)
+        torch.onnx.export(
+            self,
+            (example_inp,),
+            out_path,
+            export_params=True,
+            opset_version=14,
+            verbose=self.verbose,
+            input_names=["prop_history"],
+            output_names=["vel_est"],
+            dynamic_axes={"prop_history": {0: "B"}, "vel_est": {0: "B"}},
+        )
+        print(f"[INFO] Exported velocity_estimator to {out_path}")
+        print(f"  Input: prop_history shape [B, {self.total_input_dim}] (layout: 5*91 flattened)")
+        print(f"  Output: vel_est shape [B, 3]")
 
 
 # 保留原来的 EncActorCriticExporter 类以备用
@@ -371,4 +465,9 @@ if __name__ == "__main__":
     export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
     export_enc_vel_policy(
         ppo_runner.alg.policy, obs=agent_cfg.policy_obs_keys, path=export_model_dir, filename="enc_vel_policy.onnx"
+    )
+
+    # Export velocity estimator only (standalone)
+    export_velocity_estimator(
+        ppo_runner.alg.policy, obs=agent_cfg.policy_obs_keys, path=export_model_dir, filename="velocity_estimator.onnx"
     )

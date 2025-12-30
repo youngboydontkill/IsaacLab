@@ -478,3 +478,83 @@ def illegal_dof_pos_barrier(
     # print(l_penalty.isnan().sum(), r_penalty.isnan().sum())
     # 返回惩罚项
     return penalty 
+def feet_too_near_humanoid(
+    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"), threshold: float = 0.16
+) -> torch.Tensor:
+    asset: Articulation = env.scene[asset_cfg.name]
+    desired_links = ["leg_l6_link", "leg_r6_link"]
+    body_ids, _ = asset.find_bodies(desired_links)
+    # eef: RigidObject = env.scene[eef_cfg.name]
+    # base_link_pos_w = asset.data.body_link_pos_w[:, asset_cfg.body_ids, :]
+    # base_link_quat_w = asset.data.body_link_quat_w[:, asset_cfg.body_ids, :]
+    # base_link_pos_w = asset.data.root_pos_w - asset.data.root_pos_w
+    base_link_quat_w = asset.data.root_quat_w
+    eef_link_pos_w = asset.data.body_pos_w[:, body_ids, :] - asset.data.root_pos_w.unsqueeze(1)
+    # eef_link_quat_w = eef.data.body_link_quat_w[:, eef_cfg.body_ids, :]
+    eef_pos_body = quat_apply_inverse(base_link_quat_w[:, None, :].expand(-1, eef_link_pos_w.shape[1], -1), 
+                                      eef_link_pos_w)
+    # print("eef_pos_body: ", eef_pos_body[0, :, :])
+    distance = eef_pos_body[:, 0, 1] - eef_pos_body[:, 1, 1]
+    return (threshold - distance).clamp(min=0)
+
+def fly(env: ManagerBasedRLEnv, threshold: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    net_contact_forces = contact_sensor.data.net_forces_w_history
+    is_contact = torch.max(torch.norm(net_contact_forces[:, :, sensor_cfg.body_ids], dim=-1), dim=1)[0] > threshold
+    # print("is_contact.shape: ", is_contact.shape)
+    return torch.sum(is_contact, dim=-1) < 0.5
+
+
+def feet_solid_contact(env: ManagerBasedRLEnv, 
+                       # contact force sensor
+                       sensor_cfg: SceneEntityCfg, 
+                       # 2x feet height sensor
+                       sensor_cfg1: SceneEntityCfg | None = None,
+                       sensor_cfg2: SceneEntityCfg | None = None,
+                       # contact force threshold
+                       threshold=5.0,
+                       # feet height threshold, feet heights that smaller than this is considered as solid contact
+                       # on Kuavo s46, feet_height is 0.07m when feet are on the ground.
+                       feet_height_threshold=0.13):
+    """
+    Penalize not solid contact for stair environment.
+    When contact force is larger than threshold, penalize corresponding feet height.
+    """
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+
+    # decide is contact
+    net_contact_forces = contact_sensor.data.net_forces_w_history
+    # print("net_contact_forces.shape: ", net_contact_forces.shape)
+    is_contact = torch.norm(net_contact_forces[:, 0, sensor_cfg.body_ids], dim=-1) > threshold
+    # print("is_contact.shape: ", is_contact.shape)
+    # print("is_contact[0]: ", is_contact[0, :])
+
+    # get feet heights
+    foot_heights_raw = torch.stack(
+        [
+            # expand pos_w[:,2] to (N,1) so it can broadcast with ray_hits_w[...,2] which is (N,M)
+            env.scene[sensor_cfg.name].data.pos_w[:, 2].unsqueeze(-1)
+            - env.scene[sensor_cfg.name].data.ray_hits_w[..., 2]
+            for sensor_cfg in [sensor_cfg1, sensor_cfg2]
+            if sensor_cfg is not None
+        ],
+        dim=1,
+    )
+    # print("foot_heights_raw.shape: ", foot_heights_raw.shape)
+    # print("foot_heights_raw[0]: ", foot_heights_raw[0, :])
+    feet_height = foot_heights_raw - feet_height_threshold
+    # clip feet_height to [0.0, 0.2]
+    feet_height = torch.clamp(feet_height, min=0.0, max=0.2)
+    # is_contact: [N,2], feet_height: [N,2,10]
+    # 只在 is_contact 为 True 的位置上对最后一维求和 -> [N,2]
+    # contact_heights_sum = torch.sum(feet_height * is_contact.unsqueeze(-1), dim=-1)
+    # 使用 torch.where 在非接触处填 0，再沿最后一维求和 -> [N,2]
+    mask = is_contact.unsqueeze(-1)  # [N,2,1]
+    contact_heights_sum = torch.sum(torch.where(mask, feet_height, torch.zeros_like(feet_height)), dim=-1)
+    # print("contact_heights_sum: ", contact_heights_sum, "\n")
+    return torch.sum(contact_heights_sum)
+    # # 判定：当有接触且对应的高度和 > 0 时认为该脚接触不实
+    # feet_not_solid_per_foot = is_contact & (contact_heights_sum > 0.0)
+    # # 返回每个 env 中不稳的脚数量（可作为惩罚值），类型为 float
+    # feet_not_solid = feet_not_solid_per_foot.sum(dim=1).to(feet_height.dtype)
+    # return feet_not_solid

@@ -200,7 +200,7 @@ class KuavoAttentionRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
             critic_hidden_dims=[512, 256, 128],
             activation="elu",
             embedding_dim=64,
-            load_mask=31, 
+            load_mask=31+64, 
             velocity_estimation_enabled = True,
         )
     algorithm = RslRlPpoEncAlgorithmCfg(
@@ -226,21 +226,21 @@ class KuavoAttentionRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         self.history_len = 1 
         # TODO : 这里的数据增强应该需要重新设计支持tensordict
         self.policy_obs_keys = ["base_lin_vel","base_ang_vel","gravity","joint_pos","joint_vel","action"]
-        self.privileged_obs_keys = ["base_lin_vel","base_ang_vel","gravity","joint_pos","joint_vel","action"]
+        self.privileged_obs_keys = ["base_lin_vel","base_ang_vel","gravity","joint_pos","joint_vel","action","feet_contact_force","feet_heights"]
         self.command_obs_keys = ["cmd"]
-        # SymmetryAug.clear()
-        # SymmetryAug.register_obs("policy",self.policy_obs_keys,self.history_len)
-        # SymmetryAug.register_obs("privileged",self.privileged_obs_keys,self.history_len)
-        # SymmetryAug.register_obs("command",self.command_obs_keys,self.history_len)
-        # SymmetryAug.register_obs_high_dim("perception",mirror_scan_height)
+        SymmetryAug.clear()
+        SymmetryAug.register_obs("policy",self.policy_obs_keys,self.history_len)
+        SymmetryAug.register_obs("privileged",self.privileged_obs_keys,self.history_len)
+        SymmetryAug.register_obs("command",self.command_obs_keys,self.history_len)
+        SymmetryAug.register_obs_high_dim("perception",mirror_scan_height)
 
-        # self.algorithm.symmetry_cfg = RslRlSymmetryCfg(
-        #     use_data_augmentation=True, 
-        #     use_mirror_loss=True,
-        #     mirror_loss_coeff=1.0, 
-        #     # data_augmentation_func=SymmetryAug.data_augmentation_dict  # 这么写有点问题,他会把整个SymmetryAug.xxx识别为一个callable,但是实际只有后面是
-        #     data_augmentation_func=data_augmentation_dict
-        # )
+        self.algorithm.symmetry_cfg = RslRlSymmetryCfg(
+            use_data_augmentation=True, 
+            use_mirror_loss=True,
+            mirror_loss_coeff=1.0, 
+            # data_augmentation_func=SymmetryAug.data_augmentation_dict  # 这么写有点问题,他会把整个SymmetryAug.xxx识别为一个callable,但是实际只有后面是
+            data_augmentation_func=data_augmentation_dict
+        )
 
 @configclass
 class KuavoAttentionDreamWAQPPORunnerCfg(KuavoAttentionRoughPPORunnerCfg):
@@ -318,7 +318,7 @@ class KuavoAttentionRoughPPORunnerPlayCfg(KuavoAttentionRoughPPORunnerCfg):
             critic_hidden_dims=[512, 256, 128],
             activation="elu",
             embedding_dim=64,
-            load_mask=31,
+            load_mask=31+64,
             output_attention=True,
             velocity_estimation_enabled = True,
             use_CENet = False

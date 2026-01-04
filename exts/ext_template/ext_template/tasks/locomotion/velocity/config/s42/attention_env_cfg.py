@@ -230,21 +230,21 @@ class ObservationsCfg:
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, 
                             )
         actions = ObsTerm(func=mdp.last_action)
-        feet_contact_force = ObsTerm(
-            func=mdp.feet_contact_force,
-            params={
-                "sensor_cfg": SceneEntityCfg(
-                    "contact_forces", body_names=["leg_[l,r]6_link"]
-                )
-            },
-        )
-        feet_heights = ObsTerm(
-            func=mdp.feet_heights_bipeds,
-            params={
-                "sensor_cfg1": SceneEntityCfg("Feet_L_scanner"),
-                "sensor_cfg2": SceneEntityCfg("Feet_R_scanner"),
-            },
-        )
+        # feet_contact_force = ObsTerm(
+        #     func=mdp.feet_contact_force,
+        #     params={
+        #         "sensor_cfg": SceneEntityCfg(
+        #             "contact_forces", body_names=["leg_[l,r]6_link"]
+        #         )
+        #     },
+        # )
+        # feet_heights = ObsTerm(
+        #     func=mdp.feet_heights_bipeds,
+        #     params={
+        #         "sensor_cfg1": SceneEntityCfg("Feet_L_scanner"),
+        #         "sensor_cfg2": SceneEntityCfg("Feet_R_scanner"),
+        #     },
+        # )
         # joint_torques = ObsTerm(func=mdp.joint_torques)
         # joint_accs = ObsTerm(func=mdp.joint_accs)
         # feet_lin_vel = ObsTerm(

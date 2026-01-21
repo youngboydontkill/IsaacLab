@@ -294,3 +294,22 @@ def fixed_zero_vel(env: ManagerBasedEnv):
     num_envs = env.num_envs
     # 返回形状为 [num_envs, 3] 的零张量，与其他观测项格式一致
     return torch.zeros(num_envs, 3, device=env.device)
+
+
+def end_eff_pos_amp(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, end_effector_body_id: int):
+    """
+    计算末端执行器相对于基础的位置信息，用于AMP任务中的观测项。
+
+    参数:
+        env: 环境实例（框架会自动传入）
+        asset_cfg: 资产配置，包含机器人信息
+        end_effector_body_id: [zarm_l7, zarm_r7, leg_l6,leg_r6_link]中末端执行器的body id
+    返回:    
+        torch.Tensor: 形状为 [num_envs, 3] 的末端执行器位置张量
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    base_pos = asset.data.body_pos_w[:, 0, :]  # 基座位置
+    end_eff_pos = asset.data.body_pos_w[:, end_effector_body_id, :]  # 末端执行器位置
+    rel_end_eff_pos = end_eff_pos - base_pos  # 相对于基座的位置
+    return rel_end_eff_pos
+    

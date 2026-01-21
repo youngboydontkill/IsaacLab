@@ -10,6 +10,8 @@ from isaaclab.managers.manager_base import ManagerTermBase
 from isaaclab.sensors import ContactSensor, RayCaster
 from isaaclab.utils.math import quat_apply_inverse, yaw_quat
 
+from ext_template.sensors.volume_points import VolumePoints
+
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv, ManagerBasedEnv
 
@@ -105,6 +107,22 @@ def feet_air_time_positive_biped(
         reward *= env.command_manager.get_command(command_name)[:, 3]
     reward *= torch.clamp(-env.scene["robot"].data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
     return reward
+
+
+def volume_points_penetration(
+    env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg, tolerance: float = 0.0
+) -> torch.Tensor:
+    """Penalize the penetration of volume points into the environment."""
+    volume_sensor: VolumePoints = env.scene.sensors[sensor_cfg.name]
+    penetration = volume_sensor.data.penetration_offset  # (N, B_, P_, 3)
+    penetration = penetration.flatten(1, 2)  # (N, B_*P_, 3)
+    penetration_depth = torch.norm(penetration, dim=-1)  # (N, B_*P_)
+    in_obstacle = (penetration_depth > tolerance).float()  # (N, B_*P_)
+    points_vel = volume_sensor.data.points_vel_w  # (N, B_, P_, 3)
+    points_vel = points_vel.flatten(1, 2)  # (N, B_*P_, 3)
+    points_vel_norm = torch.norm(points_vel, dim=-1)  # (N, B_*P_)
+    velocity_times_penetration = in_obstacle * (points_vel_norm + 1e-6) * penetration_depth
+    return torch.sum(velocity_times_penetration, dim=-1)
 
 def feet_height_body(
     env: ManagerBasedRLEnv,

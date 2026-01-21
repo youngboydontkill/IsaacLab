@@ -41,12 +41,20 @@ from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import ContactSensorCfg, RayCasterCfg, patterns
-from isaaclab.terrains import TerrainImporterCfg
+from ext_template.sensors.volume_points import (
+    Grid3dPointsGeneratorCfg,
+    VolumePointsCfg,
+)
 from isaaclab.utils import configclass
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
-from ext_template.terrains import ROUGH_TERRAINS_CFG,ATTEN_ROUGH_TERRAINS_CFG
+from ext_template.terrains import (
+    ATTEN_ROUGH_TERRAINS_CFG,
+    GreedyconcatEdgeCylinderCfg,
+    ROUGH_TERRAINS_CFG,
+    TerrainImporterCfg,
+)
 from .rough_env_cfg import MySceneCfg
 
 @configclass
@@ -72,6 +80,12 @@ class AttentionSceneCfg(InteractiveSceneCfg):
             project_uvw=True,
             texture_scale=(0.25, 0.25),
         ),
+        virtual_obstacles={
+            "edges": GreedyconcatEdgeCylinderCfg(
+                cylinder_radius=0.05,
+                min_points=2,
+            ),
+        },
         debug_vis=False,
     )
     # robots
@@ -87,6 +101,21 @@ class AttentionSceneCfg(InteractiveSceneCfg):
     )
     contact_forces = ContactSensorCfg(
         prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True
+    )
+    leg_volume_points = VolumePointsCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/leg_[l,r]6_link",
+        points_generator=Grid3dPointsGeneratorCfg(
+            x_min=-0.025,
+            x_max=0.12,
+            x_num=10,
+            y_min=-0.03,
+            y_max=0.03,
+            y_num=5,
+            z_min=-0.04,
+            z_max=0.0,
+            z_num=2,
+        ),
+        debug_vis=False,
     )
     # lights
     sky_light = AssetBaseCfg(
@@ -392,6 +421,13 @@ class RewardsCfg:
     )
     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.005)
     action_smoothness_l2 = RewTerm(func=mdp.action_smoothness_l2, weight=-0.01)
+    volume_points_penetration = RewTerm(
+        func=mdp.volume_points_penetration,
+        weight=-4.0,
+        params={
+            "sensor_cfg": SceneEntityCfg("leg_volume_points"),
+        },
+    )
 
     undesired_contacts = RewTerm(
         func=mdp.undesired_contacts,
@@ -669,6 +705,14 @@ class EventCfg:
                 "pitch": (-0.3, 0.3),
                 "yaw": (-0.3, 0.3),
             },
+        },
+    )
+
+    register_virtual_obstacles = EventTerm(
+        func=mdp.register_virtual_obstacle_to_sensor,
+        mode="startup",
+        params={
+            "sensor_cfgs": SceneEntityCfg("leg_volume_points"),
         },
     )
 

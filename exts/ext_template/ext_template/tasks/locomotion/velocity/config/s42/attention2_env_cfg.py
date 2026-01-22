@@ -210,7 +210,7 @@ class ObservationsCfg:
         """Observations for policy group."""
         base_lin_vel = ObsTerm(
             func=mdp.base_lin_vel, 
-            noise=Unoise(n_min=-0.8, n_max=0.8)
+            # noise=Unoise(n_min=-0.8, n_max=0.8)
         )
         # base_lin_vel = ObsTerm(
         # func=mdp.fixed_zero_vel,
@@ -220,43 +220,18 @@ class ObservationsCfg:
         # observation terms (order preserved)
         base_ang_vel = ObsTerm(
             func=mdp.base_ang_vel, 
-            noise=Unoise(n_min=-0.2, n_max=0.2)
+            # noise=Unoise(n_min=-0.2, n_max=0.2)
         )
         projected_gravity = ObsTerm(
             func=mdp.projected_gravity,
-            noise=Unoise(n_min=-0.05, n_max=0.05),
+            # noise=Unoise(n_min=-0.05, n_max=0.05),
         )
         joint_pos = ObsTerm(
             func=mdp.joint_pos_rel, 
-            noise=Unoise(n_min=-0.05, n_max=0.05)
+            # noise=Unoise(n_min=-0.05, n_max=0.05)
         )
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, 
-                            noise=Unoise(n_min=-1.5, n_max=1.5)
-                            )
-        actions = ObsTerm(func=mdp.last_action)
-        flatten_history_dim = False
-        history_length = 5
-
-        def __post_init__(self):
-            self.enable_corruption = True
-            self.concatenate_terms = True
-    
-    @configclass
-    class PrivilegedCfg(ObsGroup):
-        """Observations for policy group."""
-        base_lin_vel = ObsTerm(
-            func=mdp.base_lin_vel, 
-        )
-        base_ang_vel = ObsTerm(
-            func=mdp.base_ang_vel, 
-        )
-        projected_gravity = ObsTerm(
-            func=mdp.projected_gravity,
-        )
-        joint_pos = ObsTerm(
-            func=mdp.joint_pos_rel, 
-        )
-        joint_vel = ObsTerm(func=mdp.joint_vel_rel, 
+                            # noise=Unoise(n_min=-1.5, n_max=1.5)
                             )
         actions = ObsTerm(func=mdp.last_action)
         # feet_contact_force = ObsTerm(
@@ -282,6 +257,54 @@ class ObservationsCfg:
         #         "asset_cfg": SceneEntityCfg("robot", body_names=["leg_[l,r]6_link"])
         #     },
         # )
+        flatten_history_dim = False
+        history_length = 5
+
+        def __post_init__(self):
+            self.enable_corruption = True
+            self.concatenate_terms = True
+    
+    @configclass
+    class PrivilegedCfg(ObsGroup):
+        """Observations for policy group."""
+        base_lin_vel = ObsTerm(
+            func=mdp.base_lin_vel, 
+        )
+        base_ang_vel = ObsTerm(
+            func=mdp.base_ang_vel, 
+        )
+        projected_gravity = ObsTerm(
+            func=mdp.projected_gravity,
+        )
+        joint_pos = ObsTerm(
+            func=mdp.joint_pos_rel, 
+        )
+        joint_vel = ObsTerm(func=mdp.joint_vel_rel, 
+                            )
+        actions = ObsTerm(func=mdp.last_action)
+        feet_contact_force = ObsTerm(
+            func=mdp.feet_contact_force,
+            params={
+                "sensor_cfg": SceneEntityCfg(
+                    "contact_forces", body_names=["leg_[l,r]6_link"]
+                )
+            },
+        )
+        feet_heights = ObsTerm(
+            func=mdp.feet_heights_bipeds,
+            params={
+                "sensor_cfg1": SceneEntityCfg("Feet_L_scanner"),
+                "sensor_cfg2": SceneEntityCfg("Feet_R_scanner"),
+            },
+        )
+        joint_torques = ObsTerm(func=mdp.joint_torques)
+        joint_accs = ObsTerm(func=mdp.joint_accs)
+        feet_lin_vel = ObsTerm(
+            func=mdp.feet_lin_vel,
+            params={
+                "asset_cfg": SceneEntityCfg("robot", body_names=["leg_[l,r]6_link"])
+            },
+        )
         
         # feet_air_times = ObsTerm(
         #     func=mdp.feet_air_time_obs,
@@ -292,7 +315,7 @@ class ObservationsCfg:
         #     },
         # )
         flatten_history_dim = False
-        history_length = 5
+        history_length = 1
         def __post_init__(self):
             self.enable_corruption = True
             self.concatenate_terms = True

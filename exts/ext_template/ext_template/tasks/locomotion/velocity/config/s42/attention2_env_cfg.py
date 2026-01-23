@@ -282,29 +282,29 @@ class ObservationsCfg:
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, 
                             )
         actions = ObsTerm(func=mdp.last_action)
-        feet_contact_force = ObsTerm(
-            func=mdp.feet_contact_force,
-            params={
-                "sensor_cfg": SceneEntityCfg(
-                    "contact_forces", body_names=["leg_[l,r]6_link"]
-                )
-            },
-        )
-        feet_heights = ObsTerm(
-            func=mdp.feet_heights_bipeds,
-            params={
-                "sensor_cfg1": SceneEntityCfg("Feet_L_scanner"),
-                "sensor_cfg2": SceneEntityCfg("Feet_R_scanner"),
-            },
-        )
-        joint_torques = ObsTerm(func=mdp.joint_torques)
-        joint_accs = ObsTerm(func=mdp.joint_accs)
-        feet_lin_vel = ObsTerm(
-            func=mdp.feet_lin_vel,
-            params={
-                "asset_cfg": SceneEntityCfg("robot", body_names=["leg_[l,r]6_link"])
-            },
-        )
+        # feet_contact_force = ObsTerm(
+        #     func=mdp.feet_contact_force,
+        #     params={
+        #         "sensor_cfg": SceneEntityCfg(
+        #             "contact_forces", body_names=["leg_[l,r]6_link"]
+        #         )
+        #     },
+        # )
+        # feet_heights = ObsTerm(
+        #     func=mdp.feet_heights_bipeds,
+        #     params={
+        #         "sensor_cfg1": SceneEntityCfg("Feet_L_scanner"),
+        #         "sensor_cfg2": SceneEntityCfg("Feet_R_scanner"),
+        #     },
+        # )
+        # joint_torques = ObsTerm(func=mdp.joint_torques)
+        # joint_accs = ObsTerm(func=mdp.joint_accs)
+        # feet_lin_vel = ObsTerm(
+        #     func=mdp.feet_lin_vel,
+        #     params={
+        #         "asset_cfg": SceneEntityCfg("robot", body_names=["leg_[l,r]6_link"])
+        #     },
+        # )
         
         # feet_air_times = ObsTerm(
         #     func=mdp.feet_air_time_obs,
@@ -387,24 +387,26 @@ class ObservationsCfg:
 
     # observation groups
 
-    @configclass
-    class AMPPolicyCfg(ObsGroup):
-        # 64：joint_pos joint_vel end_eff_pos
-        joint_pos = ObsTerm(
-            func=mdp.joint_pos_rel, 
-            noise=Unoise(n_min=-0.05, n_max=0.05)
-        )
-        joint_vel = ObsTerm(func=mdp.joint_vel_rel, 
-                            noise=Unoise(n_min=-1.5, n_max=1.5)
-                            )
-        end_eff_pos = ObsTerm(func=mdp.end_eff_pos_amp, 
-                            noise=Unoise(n_min=-0.05, n_max=0.05)
-                            )
+    # @configclass
+    # class AMPPolicyCfg(ObsGroup):
+    #     # 64：joint_pos joint_vel end_eff_pos
+    #     joint_pos = ObsTerm(
+    #         func=mdp.joint_pos_rel, 
+    #         noise=Unoise(n_min=-0.05, n_max=0.05)
+    #     )
+    #     joint_vel = ObsTerm(func=mdp.joint_vel_rel, 
+    #                         )
+    #     end_eff_pos = ObsTerm(func=mdp.end_eff_pos_amp, 
+    #                           params={
+    #                             "asset_cfg": SceneEntityCfg("robot"),
+    #                             "end_effector_body_id": "zarm_[l,r]7_link,leg_[l,r]6_link",
+    #                         },
+    #     )
     command: CommandCfg = CommandCfg()
     policy: PolicyCfg = PolicyCfg()
     privileged: PrivilegedCfg = PrivilegedCfg()
     perception: PerceptionCfg = PerceptionCfg()
-    amp_policy: AMPPolicyCfg = AMPPolicyCfg()
+    #amp_policy: AMPPolicyCfg = AMPPolicyCfg()
 
 
 @configclass
@@ -773,7 +775,7 @@ class CurriculumCfg:
 
 
 @configclass
-class KuavoAttentionRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
+class KuavoAttention2RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     # scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=2.5)
     scene: AttentionSceneCfg = AttentionSceneCfg(num_envs=4096, env_spacing=2.5)
     commands: CommandsCfg = CommandsCfg()
@@ -808,7 +810,7 @@ class ObservationsPlayCfg(ObservationsCfg):
     visualize: VisualizeCfg = VisualizeCfg()
 
 @configclass
-class KuavoAttentionRoughEnvCfg_PLAY(KuavoAttentionRoughEnvCfg):
+class KuavoAttention2RoughEnvCfg_PLAY(KuavoAttention2RoughEnvCfg):
     observations: ObservationsPlayCfg = ObservationsPlayCfg()
     def __post_init__(self):
         # post init of parent

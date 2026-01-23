@@ -61,6 +61,9 @@ from .rough_env_cfg import MySceneCfg
 class AttentionSceneCfg(InteractiveSceneCfg):
     """Configuration for the terrain scene with a legged robot."""
 
+
+
+
     # ground terrain
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
@@ -80,12 +83,12 @@ class AttentionSceneCfg(InteractiveSceneCfg):
             project_uvw=True,
             texture_scale=(0.25, 0.25),
         ),
-        virtual_obstacles={
-            "edges": GreedyconcatEdgeCylinderCfg(
-                cylinder_radius=0.05,
-                min_points=2,
-            ),
-        },
+        # virtual_obstacles={
+        #     "edges": GreedyconcatEdgeCylinderCfg(
+        #         cylinder_radius=0.05,
+        #         min_points=2,
+        #     ),
+        # },
         debug_vis=False,
     )
     # robots
@@ -102,21 +105,21 @@ class AttentionSceneCfg(InteractiveSceneCfg):
     contact_forces = ContactSensorCfg(
         prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True
     )
-    leg_volume_points = VolumePointsCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/leg_[l,r]6_link",
-        points_generator=Grid3dPointsGeneratorCfg(
-            x_min=-0.025,
-            x_max=0.12,
-            x_num=10,
-            y_min=-0.03,
-            y_max=0.03,
-            y_num=5,
-            z_min=-0.04,
-            z_max=0.0,
-            z_num=2,
-        ),
-        debug_vis=False,
-    )
+    # leg_volume_points = VolumePointsCfg(
+    #     prim_path="{ENV_REGEX_NS}/Robot/leg_[l,r]6_link",
+    #     points_generator=Grid3dPointsGeneratorCfg(
+    #         x_min=-0.025,
+    #         x_max=0.12,
+    #         x_num=10,
+    #         y_min=-0.03,
+    #         y_max=0.03,
+    #         y_num=5,
+    #         z_min=-0.04,
+    #         z_max=0.0,
+    #         z_num=2,
+    #     ),
+    #     debug_vis=False,
+    # )
     # lights
     sky_light = AssetBaseCfg(
         prim_path="/World/skyLight",
@@ -446,13 +449,13 @@ class RewardsCfg:
     )
     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.005)
     action_smoothness_l2 = RewTerm(func=mdp.action_smoothness_l2, weight=-0.01)
-    volume_points_penetration = RewTerm(
-        func=mdp.volume_points_penetration,
-        weight=-4.0,
-        params={
-            "sensor_cfg": SceneEntityCfg("leg_volume_points"),
-        },
-    )
+    # volume_points_penetration = RewTerm(
+    #     func=mdp.volume_points_penetration,
+    #     weight=-4.0,
+    #     params={
+    #         "sensor_cfg": SceneEntityCfg("leg_volume_points"),
+    #     },
+    # )
 
     undesired_contacts = RewTerm(
         func=mdp.undesired_contacts,
@@ -733,13 +736,13 @@ class EventCfg:
         },
     )
 
-    register_virtual_obstacles = EventTerm(
-        func=mdp.register_virtual_obstacle_to_sensor,
-        mode="startup",
-        params={
-            "sensor_cfgs": SceneEntityCfg("leg_volume_points"),
-        },
-    )
+    # register_virtual_obstacles = EventTerm(
+    #     func=mdp.register_virtual_obstacle_to_sensor,
+    #     mode="startup",
+    #     params={
+    #         "sensor_cfgs": SceneEntityCfg("leg_volume_points"),
+    #     },
+    # )
 
     reset_robot_joints = EventTerm(
         func=mdp.reset_joints_by_scale,

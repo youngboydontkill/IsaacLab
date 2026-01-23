@@ -296,20 +296,39 @@ def fixed_zero_vel(env: ManagerBasedEnv):
     return torch.zeros(num_envs, 3, device=env.device)
 
 
-def end_eff_pos_amp(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, end_effector_body_id: int):
+def end_eff_pos_amp(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg,
+    end_effector_body_id: int | str | list[int | str] | tuple[int | str, ...],
+):
     """
     计算末端执行器相对于基础的位置信息，用于AMP任务中的观测项。
 
     参数:
         env: 环境实例（框架会自动传入）
         asset_cfg: 资产配置，包含机器人信息
-        end_effector_body_id: [zarm_l7, zarm_r7, leg_l6,leg_r6_link]中末端执行器的body id
-    返回:    
-        torch.Tensor: 形状为 [num_envs, 3] 的末端执行器位置张量
+        end_effector_body_id: 末端执行器的 body id 或 body 名称（支持列表/元组）
+    返回:
+        torch.Tensor: 形状为 [num_envs, 3] 或 [num_envs, N, 3] 的末端执行器位置张量
     """
     asset: Articulation = env.scene[asset_cfg.name]
-    base_pos = asset.data.body_pos_w[:, 0, :]  # 基座位置
-    end_eff_pos = asset.data.body_pos_w[:, end_effector_body_id, :]  # 末端执行器位置
-    rel_end_eff_pos = end_eff_pos - base_pos  # 相对于基座的位置
-    return rel_end_eff_pos
+
+    def _resolve_body_id(body_id: int | str) -> int:
+        if isinstance(body_id, str):
+            try:
+                return asset.data.body_names.index(body_id)
+            except ValueError as exc:
+                raise ValueError(f"Unknown body name: {body_id}") from exc
+        return int(body_id)
+
+    if isinstance(end_effector_body_id, (list, tuple)):
+        body_ids = [_resolve_body_id(bid) for bid in end_effector_body_id]
+        end_eff_pos = asset.data.body_pos_w[:, body_ids, :]
+        base_pos = asset.data.body_pos_w[:, 0, :].unsqueeze(1)
+        return end_eff_pos - base_pos
+
+    body_id = _resolve_body_id(end_effector_body_id)
+    base_pos = asset.data.body_pos_w[:, 0, :]
+    end_eff_pos = asset.data.body_pos_w[:, body_id, :]
+    return end_eff_pos - base_pos
     

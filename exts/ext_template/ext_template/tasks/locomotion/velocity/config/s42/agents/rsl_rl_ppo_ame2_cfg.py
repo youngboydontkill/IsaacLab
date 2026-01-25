@@ -279,7 +279,7 @@ class KuavoAttention2RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         # 84 * 5 = 420
         self.history_len = 1 
         # TODO : 这里的数据增强应该需要重新设计支持tensordict
-        self.policy_obs_keys = ["base_lin_vel","base_ang_vel","gravity","joint_pos","joint_vel","action"]
+        self.policy_obs_keys = ["base_ang_vel","gravity","joint_pos","joint_vel","action"]
         self.privileged_obs_keys = ["base_lin_vel","base_ang_vel","gravity","joint_pos","joint_vel","action"]  # "feet_contact_force","feet_heights"
         self.command_obs_keys = ["cmd"]
         SymmetryAug.clear()

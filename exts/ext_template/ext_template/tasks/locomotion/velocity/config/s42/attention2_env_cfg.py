@@ -211,10 +211,10 @@ class ObservationsCfg:
     @configclass
     class PolicyCfg(ObsGroup):
         """Observations for policy group."""
-        base_lin_vel = ObsTerm(
-            func=mdp.base_lin_vel, 
-            # noise=Unoise(n_min=-0.8, n_max=0.8)
-        )
+        # base_lin_vel = ObsTerm(
+        #     func=mdp.base_lin_vel, 
+        #     # noise=Unoise(n_min=-0.8, n_max=0.8)
+        # )
         # base_lin_vel = ObsTerm(
         # func=mdp.fixed_zero_vel,
         # # noise=Unoise(n_min=-0.1, n_max=0.1)
@@ -420,7 +420,7 @@ class RewardsCfg:
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_yaw_frame_exp,
         # weight=5.0,
-        weight=4.0,
+        weight=10.0,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     track_ang_vel_z_exp = RewTerm(

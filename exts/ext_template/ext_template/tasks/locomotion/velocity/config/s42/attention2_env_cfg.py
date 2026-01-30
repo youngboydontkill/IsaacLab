@@ -223,7 +223,7 @@ class ObservationsCfg:
         # observation terms (order preserved)
         base_ang_vel = ObsTerm(
             func=mdp.base_ang_vel, 
-            # noise=Unoise(n_min=-0.2, n_max=0.2)
+            noise=Unoise(n_min=-0.2, n_max=0.2)
         )
         projected_gravity = ObsTerm(
             func=mdp.projected_gravity,
@@ -231,10 +231,10 @@ class ObservationsCfg:
         )
         joint_pos = ObsTerm(
             func=mdp.joint_pos_rel, 
-            # noise=Unoise(n_min=-0.05, n_max=0.05)
+            noise=Unoise(n_min=-0.05, n_max=0.05)
         )
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, 
-                            # noise=Unoise(n_min=-1.5, n_max=1.5)
+                            noise=Unoise(n_min=-1., n_max=1.)
                             )
         actions = ObsTerm(func=mdp.last_action)
         # feet_contact_force = ObsTerm(
@@ -425,7 +425,7 @@ class RewardsCfg:
     )
     track_ang_vel_z_exp = RewTerm(
         func=mdp.track_ang_vel_z_world_exp,
-        weight=4.0,
+        weight=3.0,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     # -- penalties
@@ -459,7 +459,7 @@ class RewardsCfg:
 
     undesired_contacts = RewTerm(
         func=mdp.undesired_contacts,
-        weight=-1.0,
+        weight=-0.5,
         params={
             "sensor_cfg": SceneEntityCfg(
                 "contact_forces",
@@ -512,7 +512,7 @@ class RewardsCfg:
 
     track_default_arm_pos = RewTerm(
         func=mdp.track_default_arm_pos,
-        weight=6.0,
+        weight=9.0,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -546,7 +546,7 @@ class RewardsCfg:
     )
     joint_deviation_arms = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.1,
+        weight=-1,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -575,7 +575,7 @@ class RewardsCfg:
 
     stand_still_without_cmd = RewTerm(
         func=mdp.stand_still_without_cmd,
-        weight=-10.0,
+        weight=-6.0,
         params={
             "command_name": "base_velocity",
             "use_stance_mask": False,
@@ -584,7 +584,7 @@ class RewardsCfg:
     # 加入feet contact的惩罚
     feet_stumble = RewTerm(
         func=mdp.feet_stumble,
-        weight=-1.0,
+        weight=-0.7,
         params={"sensor_cfg": SceneEntityCfg(
             "contact_forces", body_names="leg_[l,r]6_link")},
     )
@@ -600,7 +600,7 @@ class RewardsCfg:
     )
     illegal_dof_barrier = RewTerm(
         func=mdp.illegal_dof_pos_barrier,
-        weight=-0.1,
+        weight=-0.08,
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=["leg_l[5,6]_joint", "leg_r[5,6]_joint"])
         },

@@ -294,23 +294,25 @@ class KuavoAttention2RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         self.policy_obs_keys = ["base_ang_vel","gravity","joint_pos","joint_vel","action"]
         self.privileged_obs_keys = ["base_lin_vel","base_ang_vel","gravity","joint_pos","joint_vel","action"]  # "feet_contact_force","feet_heights"
         self.command_obs_keys = ["cmd"]
-        SymmetryAug.clear()
-        SymmetryAug.register_obs("policy",self.policy_obs_keys,self.history_len)
-        SymmetryAug.register_obs("privileged",self.privileged_obs_keys,self.history_len)
-        SymmetryAug.register_obs("command",self.command_obs_keys,self.history_len)
-        SymmetryAug.register_obs_high_dim("perception",mirror_scan_height)
+        # SymmetryAug.clear()
+        # SymmetryAug.register_obs("policy",self.policy_obs_keys,self.history_len)
+        # SymmetryAug.register_obs("privileged",self.privileged_obs_keys,self.history_len)
+        # SymmetryAug.register_obs("command",self.command_obs_keys,self.history_len)
+        # SymmetryAug.register_obs_high_dim("perception",mirror_scan_height)
 
-        self.algorithm.symmetry_cfg = RslRlSymmetryCfg(
-            use_data_augmentation=True, 
-            use_mirror_loss=True,
-            mirror_loss_coeff=2.0, 
-            # data_augmentation_func=SymmetryAug.data_augmentation_dict  # 这么写有点问题,他会把整个SymmetryAug.xxx识别为一个callable,但是实际只有后面是
-            data_augmentation_func=data_augmentation_dict
-        )
+        # self.algorithm.symmetry_cfg = RslRlSymmetryCfg(
+        #     use_data_augmentation=True, 
+        #     use_mirror_loss=True,
+        #     mirror_loss_coeff=2.0, 
+        #     # data_augmentation_func=SymmetryAug.data_augmentation_dict  # 这么写有点问题,他会把整个SymmetryAug.xxx识别为一个callable,但是实际只有后面是
+        #     data_augmentation_func=data_augmentation_dict
+        # )
 
 
 @configclass
 class KuavoAttention2RoughLDPPORunnerCfg(KuavoAttention2RoughPPORunnerCfg):
+    save_interval = 100
+    experiment_name = "Kuavo/s42/LD"
     policy = RslRlPpoLatentDistillActorCriticCfg(
         init_noise_std=1.0,
         noise_std_type="log",
@@ -319,12 +321,11 @@ class KuavoAttention2RoughLDPPORunnerCfg(KuavoAttention2RoughPPORunnerCfg):
         activation="elu",
         embedding_dim=96,
         map_channels=3,
-        num_heads=8,
         local_cnn_channels=(16, 48),
         pos_embed_dim=16,
         local_mlp_hidden=(96,),
         global_mlp_hidden=(64,),
-        global_dim=64,
+        global_dim=64,   # latent dim
         fusion_mlp_hidden=(96,),
         use_batch_norm=True,
         pos_from_map=True,
@@ -348,10 +349,38 @@ class KuavoAttention2RoughLDPPORunnerCfg(KuavoAttention2RoughPPORunnerCfg):
         lam=0.95,
         desired_kl=0.01,
         max_grad_norm=1.0,
-        distill_loss_coef=1.0,
+        distill_loss_coef=0.0,
         distill_lr=1e-4,
     )
-
+@configclass
+class KuavoAttention2RoughLDPPORunnerPlayCfg(KuavoAttention2RoughLDPPORunnerCfg):
+    policy = RslRlPpoLatentDistillActorCriticCfg(
+        init_noise_std=1.0,
+        actor_hidden_dims=[512, 256, 128],
+        critic_hidden_dims=[512, 256, 128],
+        activation="elu",
+        embedding_dim=96,
+        map_channels=3,
+        local_cnn_channels=(16, 48),
+        pos_embed_dim=16,
+        local_mlp_hidden=(96,),
+        global_mlp_hidden=(64,),
+        global_dim=64,
+        fusion_mlp_hidden=(96,),
+        use_batch_norm=True,
+        pos_from_map=True,
+        remove_xy_channels=True,
+        props_embed_dim=64,
+        actor_props_encoder_hidden=[256, 128],
+        critic_props_encoder_hidden=None,
+        use2Encoder=False,
+        load_mask=15,
+        output_attention=False,
+        velocity_estimation_enabled = True,
+        use_CENet = False
+    )
+    def __post_init__(self):
+        super().__post_init__()
 
 @configclass 
 class KuavoAttention2RoughPPORunnerPlayCfg(KuavoAttention2RoughPPORunnerCfg):
@@ -388,3 +417,4 @@ class KuavoAttention2RoughPPORunnerPlayCfg(KuavoAttention2RoughPPORunnerCfg):
         )
     def __post_init__(self):
         super().__post_init__()
+

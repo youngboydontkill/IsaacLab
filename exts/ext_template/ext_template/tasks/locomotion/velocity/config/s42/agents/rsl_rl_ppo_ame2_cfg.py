@@ -190,9 +190,15 @@ class RslRlPpoEncActorCriticCfg(RslRlPpoActorCriticCfg):
     velocity_estimation_enabled: bool = False  # 兼容 PPO_AME2 里传入的开关
     use_CENet: bool = False  # 兼容 PPO_AME2 里传入的开关
 
+
+@configclass
+class RslRlPpoLatentDistillActorCriticCfg(RslRlPpoEncActorCriticCfg):
+    class_name = "LatentDistillationActorCritic"
+    fusion_mlp_hidden: tuple[int, ...] = (96,)
+
 @configclass
 class RslRlPpoEnc2AlgorithmCfg(RslRlPpoAlgorithmCfg):
-    class_name = "PPO_AME2"
+    class_name = "PPO_AME2"  # PPO_LD
     # PPO_AME2 所需超参数（与 PPO.__init__ 对齐）
     normalize_advantage_per_mini_batch: bool = False
     # AMP 开关（仅对 PPO_AME2 有效）
@@ -215,6 +221,12 @@ class RslRlPpoEnc2AlgorithmCfg(RslRlPpoAlgorithmCfg):
     # Distillation (Enc2ActorCritic)
     distill_loss_coef: float = 0.0
     distill_lr: float = 1e-4
+
+
+@configclass
+class RslRlPpoLatentDistillAlgorithmCfg(RslRlPpoEnc2AlgorithmCfg):
+    class_name = "PPO_LD" 
+    pass
 
 @configclass 
 class KuavoAttention2RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
@@ -295,6 +307,50 @@ class KuavoAttention2RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
             # data_augmentation_func=SymmetryAug.data_augmentation_dict  # 这么写有点问题,他会把整个SymmetryAug.xxx识别为一个callable,但是实际只有后面是
             data_augmentation_func=data_augmentation_dict
         )
+
+
+@configclass
+class KuavoAttention2RoughLDPPORunnerCfg(KuavoAttention2RoughPPORunnerCfg):
+    policy = RslRlPpoLatentDistillActorCriticCfg(
+        init_noise_std=1.0,
+        noise_std_type="log",
+        actor_hidden_dims=[512, 256, 128],
+        critic_hidden_dims=[512, 256, 128],
+        activation="elu",
+        embedding_dim=96,
+        map_channels=3,
+        num_heads=8,
+        local_cnn_channels=(16, 48),
+        pos_embed_dim=16,
+        local_mlp_hidden=(96,),
+        global_mlp_hidden=(64,),
+        global_dim=64,
+        fusion_mlp_hidden=(96,),
+        use_batch_norm=True,
+        pos_from_map=True,
+        remove_xy_channels=True,
+        props_embed_dim=64,
+        actor_props_encoder_hidden=[256, 128],
+        critic_props_encoder_hidden=None,
+        use2Encoder=False,
+        load_mask=7 + 8,
+    )
+    algorithm = RslRlPpoLatentDistillAlgorithmCfg(
+        value_loss_coef=1.0,
+        use_clipped_value_loss=True,
+        clip_param=0.2,
+        entropy_coef=0.005,
+        num_learning_epochs=5,
+        num_mini_batches=4,
+        learning_rate=1.0e-3,
+        schedule="adaptive",
+        gamma=0.99,
+        lam=0.95,
+        desired_kl=0.01,
+        max_grad_norm=1.0,
+        distill_loss_coef=1.0,
+        distill_lr=1e-4,
+    )
 
 
 @configclass 

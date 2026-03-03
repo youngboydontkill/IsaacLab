@@ -180,23 +180,22 @@ gym.register(
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_ame2_cfg:KuavoAttention2RoughLDPPORunnerCfg",
     },
 )
-
+gym.register(
+    id="Legged-Isaac-LatentDistiilation-Rough-Kuavo-S42-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.LD_env_cfg:KuavoAttention2RoughEnvCfg_PLAY",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_ame2_cfg:KuavoAttention2RoughLDPPORunnerPlayCfg",
+    },
+)
 gym.register(
     id="Legged-Isaac-Attention2-Rough-Kuavo-S42-Play-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.attention2_env_cfg:KuavoAttention2RoughEnvCfg_PLAY",
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_ame2_cfg:KuavoAttention2RoughLDPPORunnerPlayCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_ame2_cfg:KuavoAttention2RoughPPORunnerPlayCfg",
     },
 )
 
-gym.register(
-    id="Legged-Isaac-LatentDistiilation-Rough-Kuavo-S42-Play-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": f"{__name__}.attention2_env_cfg:KuavoAttention2RoughEnvCfg_PLAY",
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_ame2_cfg:KuavoAttention2RoughLDPPORunnerPlayCfg",
-    },
-)

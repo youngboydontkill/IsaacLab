@@ -29,3 +29,6 @@ from .actuator_pd import DelayedImplicitActuator
 
 from .actuator_cfg import DelayedPDActuatorCfg_S42
 from .actuator_pd import DelayedPDActuator_S42
+
+from .actuator_cfg import LejuDelayedPDActuatorCfg
+from .actuator_pd import LejuDelayedPDActuator

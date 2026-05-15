@@ -1,8 +1,9 @@
 import isaaclab.sim as sim_utils
 from isaaclab.assets.articulation import ArticulationCfg
-from isaaclab.utils.assets import ISAACLAB_NUCLEUS_DIR
+from isaaclab.utils import configclass
+from isaaclab.managers import SceneEntityCfg
 
-from ext_template.actuators import DelayedPDActuatorCfg_S42
+from ext_template.actuators import DelayedPDActuatorCfg_S42,LejuDelayedPDActuatorCfg
 from ext_template.assets import ISAAC_ASSET_DIR
 
 
@@ -145,3 +146,246 @@ Kuavos46_CFG = ArticulationCfg(
         ),
     },
 )
+
+
+KUAVOS54_MDP_JOINT_ORDER_CFG = SceneEntityCfg(
+    "robot",
+    joint_names=[
+        "leg_l1_joint",
+        "leg_l2_joint",
+        "leg_l3_joint",
+        "leg_l4_joint",
+        "leg_l5_joint",
+        "leg_l6_joint",
+        "leg_r1_joint",
+        "leg_r2_joint",
+        "leg_r3_joint",
+        "leg_r4_joint",
+        "leg_r5_joint",
+        "leg_r6_joint",
+        "waist_yaw_joint",
+        "zarm_l1_joint",
+        "zarm_l2_joint",
+        "zarm_l3_joint",
+        "zarm_l4_joint",
+        "zarm_l5_joint",
+        "zarm_l6_joint",
+        "zarm_l7_joint",
+        "zarm_r1_joint",
+        "zarm_r2_joint",
+        "zarm_r3_joint",
+        "zarm_r4_joint",
+        "zarm_r5_joint",
+        "zarm_r6_joint",
+        "zarm_r7_joint",
+    ],
+    body_names=[
+        "leg_l1_link",
+        "leg_l2_link",
+        "leg_l3_link",
+        "leg_l4_link",
+        "leg_l5_link",
+        "leg_l6_link",
+        "leg_r1_link",
+        "leg_r2_link",
+        "leg_r3_link",
+        "leg_r4_link",
+        "leg_r5_link",
+        "leg_r6_link",
+        "waist_yaw_link",
+        "zarm_l1_link",
+        "zarm_l2_link",
+        "zarm_l3_link",
+        "zarm_l4_link",
+        "zarm_l5_link",
+        "zarm_l6_link",
+        "zarm_l7_link",
+        "zarm_r1_link",
+        "zarm_r2_link",
+        "zarm_r3_link",
+        "zarm_r4_link",
+        "zarm_r5_link",
+        "zarm_r6_link",
+        "zarm_r7_link",
+    ],
+    preserve_order=True
+)
+
+@configclass
+class KuavoS54ArticulationCfg(ArticulationCfg):
+    """Configuration for Kuavo S54 articulation."""
+    spawn=sim_utils.UrdfFileCfg(
+        fix_base=False,
+        replace_cylinders_with_capsules=True,
+        asset_path=f"{ISAAC_ASSET_DIR}/Robots/Kuavo/biped_s52.urdf",
+        activate_contact_sensors=True,
+        rigid_props=sim_utils.RigidBodyPropertiesCfg(
+            disable_gravity=False,
+            retain_accelerations=False,
+            linear_damping=0.0,
+            angular_damping=0.0,
+            max_linear_velocity=1000.0,
+            max_angular_velocity=1000.0,
+            max_depenetration_velocity=1.0,
+        ),
+        articulation_props=sim_utils.ArticulationRootPropertiesCfg(
+            enabled_self_collisions=True,
+            solver_position_iteration_count=8,
+            solver_velocity_iteration_count=4
+        ),
+        joint_drive=sim_utils.UrdfConverterCfg.JointDriveCfg(
+            gains=sim_utils.UrdfConverterCfg.JointDriveCfg.PDGainsCfg(stiffness=0, damping=0)
+        ),
+    )
+    init_state=ArticulationCfg.InitialStateCfg(
+        pos=(0.0, 0.0, 0.925),
+        rot=(1.0, 0.0, 0.0, 0.0),
+        joint_pos={
+            "leg_[l,r]1_joint": 0.0,
+            "leg_[l,r]2_joint": 0.0,
+            "leg_[l,r]3_joint": -0.4,
+            "leg_[l,r]4_joint": 0.69,
+            "leg_[l,r]5_joint": -0.33,
+            "leg_[l,r]6_joint": 0.0,
+            "waist_yaw_joint": 0.0,
+            "zarm_.*_joint": 0.0,
+        },
+        joint_vel={".*": 0.0},
+    )
+    soft_joint_pos_limit_factor=0.95
+    actuators={
+        "motor": LejuDelayedPDActuatorCfg(
+            joint_names_expr=[
+                "waist_.*",
+                "leg_.*",
+                "zarm_.*"
+            ],
+            effort_limit={
+                "leg_[l,r]1_joint": 101.6,
+                "leg_[l,r]2_joint": 56.8,
+                "leg_[l,r]3_joint": 105.6,
+                "leg_[l,r]4_joint": 224.0,
+                "leg_[l,r]5_joint": 91.6,
+                "leg_[l,r]6_joint": 57.0,
+                "waist_yaw_joint": 81.6,
+                "zarm_[l,r]1_joint": 52.8,
+                "zarm_[l,r]2_joint": 60.0,
+                "zarm_[l,r]3_joint": 45.6,
+                "zarm_[l,r]4_joint": 60.0,
+                "zarm_[l,r]5_joint": 11.0,
+                "zarm_[l,r]6_joint": 11.0,
+                "zarm_[l,r]7_joint": 11.0,
+            },
+            velocity_limit={
+                "leg_[l,r]1_joint": 10.4,
+                "leg_[l,r]2_joint": 8.7,
+                "leg_[l,r]3_joint": 12.7,
+                "leg_[l,r]4_joint": 10.4,
+                "leg_[l,r]5_joint": 17.8,
+                "leg_[l,r]6_joint": 17.8,
+
+                "waist_yaw_joint": 8.7,
+                "zarm_[l,r]1_joint": 18.8,
+                "zarm_[l,r]2_joint": 8.0,
+                "zarm_[l,r]3_joint": 7.5,
+                "zarm_[l,r]4_joint": 8.0,
+                "zarm_[l,r]5_joint": 17.5,
+                "zarm_[l,r]6_joint": 17.5,
+                "zarm_[l,r]7_joint": 17.5,
+            },
+            stiffness={
+                "leg_[l,r]1_joint": 60.0,
+                "leg_[l,r]2_joint": 60.0,
+                "leg_[l,r]3_joint": 80.0,
+                "leg_[l,r]4_joint": 95.0,
+                "leg_[l,r]5_joint": 55.0,
+                "leg_[l,r]6_joint": 55.0,
+                "waist_yaw_joint":  40.0,
+                "zarm_[l,r]1_joint": 20.0,
+                "zarm_[l,r]2_joint": 20.0,
+                "zarm_[l,r]3_joint": 20.0,
+                "zarm_[l,r]4_joint": 20.0,
+                "zarm_[l,r]5_joint": 15.0,
+                "zarm_[l,r]6_joint": 15.0,
+                "zarm_[l,r]7_joint": 15.0,
+            },
+            effort_weaken_velocity_limit={
+                "waist_yaw_joint": 7.0 * 0.2,
+                "leg_[lr]1_joint": 7.0 * 0.2,
+                "leg_[lr]2_joint": 10.8 * 0.2,
+                "leg_[lr]3_joint": 7.0 * 0.2,
+                "leg_[lr]4_joint": 10.8 * 0.2,
+                "leg_[lr]5_joint": 10.2 * 0.2,
+                "leg_[lr]6_joint": 10.2 * 0.2,
+
+                "zarm_[lr]1_joint":10.5 * 0.2,
+                "zarm_[lr]2_joint":10.5 * 0.2,
+                "zarm_[lr]3_joint":10.5 * 0.2,
+                "zarm_[lr]4_joint":10.5 * 0.2,
+            },
+            damping={
+                "leg_[l,r]1_joint": 6.0,
+                "leg_[l,r]2_joint": 6.0,
+                "leg_[l,r]3_joint": 6.0,
+                "leg_[l,r]4_joint": 6.0,
+                "leg_[l,r]5_joint": 7.5,
+                "leg_[l,r]6_joint": 7.5,
+                "waist_yaw_joint": 4.0,
+                "zarm_[l,r]1_joint": 3.0,
+                "zarm_[l,r]2_joint": 3.0,
+                "zarm_[l,r]3_joint": 3.0,
+                "zarm_[l,r]4_joint": 3.0,
+                "zarm_[l,r]5_joint": 3.0,
+                "zarm_[l,r]6_joint": 3.0,
+                "zarm_[l,r]7_joint": 3.0,
+            },
+            armature={
+                "leg_[l,r]1_joint": 0.05,
+                "leg_[l,r]2_joint": 0.025,
+                "leg_[l,r]3_joint": 0.025,
+                "leg_[l,r]4_joint": 0.05,
+                "leg_[l,r]5_joint": 0.05,
+                "leg_[l,r]6_joint": 0.05,
+                "waist_yaw_joint": 0.025,
+
+                "zarm_[l,r]1_joint": 0.025,
+                "zarm_[l,r]2_joint": 0.02,
+                "zarm_[l,r]3_joint": 0.02,
+                "zarm_[l,r]4_joint": 0.02,
+                "zarm_[l,r]5_joint": 0.01,
+                "zarm_[l,r]6_joint": 0.01,
+                "zarm_[l,r]7_joint": 0.01,
+            },
+            friction=0,
+            min_delay=0,
+            max_delay=4,
+            friction_static={
+                "leg_[l,r]1_joint": 1.0,
+                "leg_[l,r]2_joint": 0.5,
+                "leg_[l,r]3_joint": 0.5,
+                "leg_[l,r]4_joint": 1.0,
+                "leg_[l,r]5_joint": 0.2,
+                "leg_[l,r]6_joint": 0.2,
+                "waist_yaw_joint": 0.2,
+                "zarm_[l,r]1_joint": 0.5,
+                "zarm_[l,r]2_joint": 0.3,
+                "zarm_[l,r]3_joint": 0.2,
+                "zarm_[l,r]4_joint": 0.3,
+                "zarm_[l,r]5_joint": 0.1,
+                "zarm_[l,r]6_joint": 0.1,
+                "zarm_[l,r]7_joint": 0.1
+            },
+            activation_vel=0.1,
+            friction_dynamic=0,
+        ),
+    }
+    preserve_joint_order = KUAVOS54_MDP_JOINT_ORDER_CFG
+
+    end_effector_configs = [
+        ("leg_l6_link", None),
+        ("leg_r6_link", None),
+        ("zarm_l7_link", [0.0, 0.0, 0.0]),
+        ("zarm_r7_link", [0.0, 0.0, 0.0]),
+    ]
+
+KuavoS54_CFG = KuavoS54ArticulationCfg()

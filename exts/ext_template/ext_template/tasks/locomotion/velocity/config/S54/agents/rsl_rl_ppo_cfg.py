@@ -164,7 +164,7 @@ class KuavoS42FlatHugWBCPPORunnerCfg(KuavoS42RoughPPORunnerCfg):
 
 @configclass
 class RslRlPpoEncActorCriticCfg(RslRlPpoActorCriticCfg):
-    class_name = "EncActorCritic"   #EncVelActorCritic EncActorCritic EncDreamWAQActorCritic
+    class_name = "EncVelActorCritic"   #EncVelActorCritic EncActorCritic EncDreamWAQActorCritic
     embedding_dim:int = 64
     load_mask:int = 7+8
     # 这两个取代原有的empirical_normalization

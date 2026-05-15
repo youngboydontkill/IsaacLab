@@ -10,7 +10,7 @@ from isaaclab.actuators import DelayedPDActuatorCfg
 from isaaclab.utils import configclass
 
 from .actuator_pd import DelayedImplicitActuator
-from .actuator_pd import DelayedPDActuator_S42
+from .actuator_pd import DelayedPDActuator_S42,LejuDelayedPDActuator
 from dataclasses import MISSING
 import torch
 
@@ -33,6 +33,16 @@ class DelayedPDActuatorCfg_S42(DelayedPDActuatorCfg):
     """Configuration for a delayed PD actuator."""
 
     class_type: type = DelayedPDActuator_S42
+    friction_static: float = 0
+    activation_vel: float = torch.inf
+    friction_dynamic: float = 0
+
+@configclass
+class LejuDelayedPDActuatorCfg(DelayedPDActuatorCfg):
+    """Configuration for a delayed PD actuator."""
+
+    class_type: type = LejuDelayedPDActuator
+    effort_weaken_velocity_limit: float | dict[str, float] = 0.0
     friction_static: float = 0
     activation_vel: float = torch.inf
     friction_dynamic: float = 0

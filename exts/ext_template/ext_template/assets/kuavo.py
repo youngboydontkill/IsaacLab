@@ -2,6 +2,7 @@ import isaaclab.sim as sim_utils
 from isaaclab.assets.articulation import ArticulationCfg
 from isaaclab.utils import configclass
 from isaaclab.managers import SceneEntityCfg
+from isaaclab.actuators import ImplicitActuatorCfg
 
 from ext_template.actuators import DelayedPDActuatorCfg_S42,LejuDelayedPDActuatorCfg
 from ext_template.assets import ISAAC_ASSET_DIR
@@ -217,7 +218,7 @@ class KuavoS54ArticulationCfg(ArticulationCfg):
     spawn=sim_utils.UrdfFileCfg(
         fix_base=False,
         replace_cylinders_with_capsules=True,
-        asset_path=f"{ISAAC_ASSET_DIR}/Robots/Kuavo/biped_s52.urdf",
+        asset_path=f"{ISAAC_ASSET_DIR}/Robots/Kuavo/biped_s52/urdf/biped_s52.urdf",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
@@ -249,6 +250,8 @@ class KuavoS54ArticulationCfg(ArticulationCfg):
             "leg_[l,r]6_joint": 0.0,
             "waist_yaw_joint": 0.0,
             "zarm_.*_joint": 0.0,
+            ".*gripper.*": 0.0,
+            "zhead.*": 0.0,
         },
         joint_vel={".*": 0.0},
     )
@@ -377,6 +380,11 @@ class KuavoS54ArticulationCfg(ArticulationCfg):
             },
             activation_vel=0.1,
             friction_dynamic=0,
+        ),
+        "dummy": ImplicitActuatorCfg(
+            joint_names_expr=[".*gripper.*", "zhead.*"],
+            stiffness=100.0,
+            damping=10.0,
         ),
     }
     preserve_joint_order = KUAVOS54_MDP_JOINT_ORDER_CFG

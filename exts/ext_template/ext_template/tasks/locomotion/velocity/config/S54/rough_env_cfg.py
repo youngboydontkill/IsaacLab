@@ -13,7 +13,7 @@ from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
 # Pre-defined configs
 ##
 # from isaaclab.robots.unitree import UNITREE_GO2_CFG  # isort: skip
-from ext_template.assets.kuavo import Kuavos46_CFG
+from ext_template.assets.kuavo import Kuavos46_CFG,KuavoS54_CFG
 
 import ext_template.tasks.locomotion.velocity.mdp as mdp
 from isaaclab.managers import SceneEntityCfg
@@ -75,7 +75,7 @@ class MySceneCfg(InteractiveSceneCfg):
         debug_vis=False,
     )
     # robots
-    robot: ArticulationCfg = MISSING
+    robot: ArticulationCfg = KuavoS54_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
     # sensors
     height_scanner = RayCasterCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base_link",
@@ -135,7 +135,6 @@ class CommandsCfg:
         rel_stepping_envs=0.5,    
     )
 
-
 @configclass
 class ObservationsCfg:
     """Observation specifications for the MDP."""
@@ -162,20 +161,26 @@ class ObservationsCfg:
         actions = ObsTerm(func=mdp.last_action)
 
         history_length = 5
+        flatten_history_dim = True
 
         def __post_init__(self):
             self.enable_corruption = True
             self.concatenate_terms = True
 
     @configclass
-    class CriticCfg(PolicyCfg):
-        base_lin_vel = ObsTerm(
-            func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1)
+    class PrivilegedCfg(ObsGroup):
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, scale=0.2)
+        projected_gravity = ObsTerm(func=mdp.projected_gravity)
+        velocity_commands = ObsTerm(
+            func=mdp.generated_commands, params={"command_name": "base_velocity"}
         )
+        joint_pos_rel = ObsTerm(func=mdp.joint_pos_rel)
+        joint_vel_rel = ObsTerm(func=mdp.joint_vel_rel, scale=0.05)
+        last_action = ObsTerm(func=mdp.last_action)
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel)
         height_scan = ObsTerm(
             func=mdp.height_scan,
             params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-            noise=Unoise(n_min=-0.1, n_max=0.1),
             clip=(-1.0, 1.0),
         )
         joint_torques = ObsTerm(func=mdp.joint_torques)
@@ -183,14 +188,14 @@ class ObservationsCfg:
         feet_lin_vel = ObsTerm(
             func=mdp.feet_lin_vel,
             params={
-                "asset_cfg": SceneEntityCfg("robot", body_names=["leg_[l,r]6_link"])
+                "asset_cfg": SceneEntityCfg("robot", body_names=["leg_[lr]6_link"])
             },
         )
         feet_contact_force = ObsTerm(
             func=mdp.feet_contact_force,
             params={
                 "sensor_cfg": SceneEntityCfg(
-                    "contact_forces", body_names=["leg_[l,r]6_link"]
+                    "contact_forces", body_names=["leg_[lr]6_link"]
                 )
             },
         )
@@ -201,7 +206,7 @@ class ObservationsCfg:
         rigid_body_material = ObsTerm(
             func=mdp.rigid_body_material,
             params={
-                "asset_cfg": SceneEntityCfg("robot", body_names=["leg_[l,r]6_link"])
+                "asset_cfg": SceneEntityCfg("robot", body_names=["leg_[lr]6_link"])
             },
         )
         base_com = ObsTerm(
@@ -231,18 +236,19 @@ class ObservationsCfg:
             func=mdp.feet_air_time_obs,
             params={
                 "sensor_cfg": SceneEntityCfg(
-                    "contact_forces", body_names="leg_[l,r]6_link"
+                    "contact_forces", body_names="leg_[lr]6_link"
                 ),
             },
         )
-
+        history_length = 5
+        flatten_history_dim = True
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
-    critic: CriticCfg = CriticCfg()
+    critic: PrivilegedCfg = PrivilegedCfg()
 
 
 @configclass
@@ -294,7 +300,7 @@ class RewardsCfg:
         },
     )
     dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=-1.0)
-    # is_terminated = RewTerm(func=mdp.is_terminated, weight=-100.0)
+    is_terminated = RewTerm(func=mdp.is_terminated, weight=-100.0)
 
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_clip,
@@ -412,9 +418,14 @@ class TerminationsCfg:
     base_contact = DoneTerm(
         func=mdp.illegal_contact,
         params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="base_link"),
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["base_link", "waist_yaw_link", "zarm_.*_link", "zhead_.*"]),
             "threshold": 1.0,
         },
+    )
+    
+    base_height = DoneTerm(
+        func=mdp.root_height_below_minimum,
+        params={"minimum_height": 0.2}
     )
 
     dof_pos_illegal = DoneTerm(
@@ -443,58 +454,58 @@ class EventCfg:
         },
     )
 
-    add_base_mass = EventTerm(
-        func=mdp.randomize_rigid_body_mass,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base_link"),
-            "mass_distribution_params": (-5.0, 5.0),
-            "operation": "add",
-        },
-    )
+    # add_base_mass = EventTerm(
+    #     func=mdp.randomize_rigid_body_mass,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="base_link"),
+    #         "mass_distribution_params": (-5.0, 5.0),
+    #         "operation": "add",
+    #     },
+    # )
 
-    scale_link_mass = EventTerm(
-        func=mdp.randomize_rigid_body_mass,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot", body_names=["leg_.*_link", "zarm_.*_link"]
-            ),
-            "mass_distribution_params": (0.8, 1.2),
-            "operation": "scale",
-        },
-    )
+    # scale_link_mass = EventTerm(
+    #     func=mdp.randomize_rigid_body_mass,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot", body_names=["leg_.*_link", "zarm_.*_link"]
+    #         ),
+    #         "mass_distribution_params": (0.8, 1.2),
+    #         "operation": "scale",
+    #     },
+    # )
 
-    randomize_rigid_body_com = EventTerm(
-        func=mdp.randomize_base_body_com,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base_link"),
-            "com_range": {"x": (-0.1, 0.1), "y": (-0.1, 0.1), "z": (-0.1, 0.1)},
-        },
-    )
+    # randomize_rigid_body_com = EventTerm(
+    #     func=mdp.randomize_base_body_com,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="base_link"),
+    #         "com_range": {"x": (-0.1, 0.1), "y": (-0.1, 0.1), "z": (-0.1, 0.1)},
+    #     },
+    # )
 
-    scale_actuator_gains = EventTerm(
-        func=mdp.randomize_actuator_gains,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", joint_names=".*_joint"),
-            "stiffness_distribution_params": (0.8, 1.2),
-            "damping_distribution_params": (0.8, 1.2),
-            "operation": "scale",
-        },
-    )
+    # scale_actuator_gains = EventTerm(
+    #     func=mdp.randomize_actuator_gains,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", joint_names=".*_joint"),
+    #         "stiffness_distribution_params": (0.8, 1.2),
+    #         "damping_distribution_params": (0.8, 1.2),
+    #         "operation": "scale",
+    #     },
+    # )
 
-    scale_joint_parameters = EventTerm(
-        func=mdp.randomize_joint_parameters,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", joint_names=".*_joint"),
-            "friction_distribution_params": (1.0, 1.0),
-            "armature_distribution_params": (0.5, 1.5),
-            "operation": "scale",
-        },
-    )
+    # scale_joint_parameters = EventTerm(
+    #     func=mdp.randomize_joint_parameters,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", joint_names=".*_joint"),
+    #         "friction_distribution_params": (1.0, 1.0),
+    #         "armature_distribution_params": (0.5, 1.5),
+    #         "operation": "scale",
+    #     },
+    # )
 
     reset_base = EventTerm(
         func=mdp.reset_root_state_uniform,
@@ -516,26 +527,26 @@ class EventCfg:
         func=mdp.reset_joints_by_scale,
         mode="reset",
         params={
-            "position_range": (0.5, 1.5),
+            "position_range": (1.0, 1.0),
             "velocity_range": (0.0, 0.0),
         },
     )
 
-    base_external_force_torque = EventTerm(
-        func=mdp.apply_external_force_torque_stochastic,
-        mode="interval",
-        interval_range_s=(0.0, 0.0),
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base_link"),
-            "force_range": {
-                "x": (-2500.0, 2500.0),
-                "y": (-2500.0, 2500.0),
-                "z": (-1500.0, 1500.0),
-            },  # force = mass * dv / dt
-            "torque_range": {"x": (-0.0, 0.0), "y": (-0.0, 0.0), "z": (-0.0, 0.0)},
-            "probability": 0.002,  # Expect step = 1 / probability
-        },
-    )
+    # base_external_force_torque = EventTerm(
+    #     func=mdp.apply_external_force_torque_stochastic,
+    #     mode="interval",
+    #     interval_range_s=(0.0, 0.0),
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="base_link"),
+    #         "force_range": {
+    #             "x": (-2500.0, 2500.0),
+    #             "y": (-2500.0, 2500.0),
+    #             "z": (-1500.0, 1500.0),
+    #         },  # force = mass * dv / dt
+    #         "torque_range": {"x": (-0.0, 0.0), "y": (-0.0, 0.0), "z": (-0.0, 0.0)},
+    #         "probability": 0.002,  # Expect step = 1 / probability
+    #     },
+    # )
 
 
 @configclass
@@ -546,7 +557,7 @@ class CurriculumCfg:
 
 
 @configclass
-class KuavoS42RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
+class KuavoS54RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=2.5)
     commands: CommandsCfg = CommandsCfg()
     observations: ObservationsCfg = ObservationsCfg()
@@ -558,32 +569,77 @@ class KuavoS42RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
-        self.scene.robot = Kuavos46_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
-        self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base_link"
         # reduce action scale
         self.actions.joint_pos.scale = 0.25
+        # general settings
+        self.decimation = 4
+        self.episode_length_s = 20.0
+        # simulation settings
+        self.sim.dt = 0.005
+        self.sim.render_interval = self.decimation
+        self.sim.physics_material = self.scene.terrain.physics_material
+        self.sim.physx.gpu_max_rigid_patch_count = 10 * 2**15
+
+        # update sensor update periods
+        if self.scene.height_scanner is not None:
+            self.scene.height_scanner.update_period = self.decimation * self.sim.dt
+        if self.scene.contact_forces is not None:
+            self.scene.contact_forces.update_period = self.sim.dt
+
+        if getattr(self.curriculum, "terrain_levels", None) is not None:
+            if self.scene.terrain.terrain_generator is not None:
+                self.scene.terrain.terrain_generator.curriculum = True
+        else:
+            if self.scene.terrain.terrain_generator is not None:
+                self.scene.terrain.terrain_generator.curriculum = False
+
+        self.actions.joint_pos.joint_names = KuavoS54_CFG.preserve_joint_order.joint_names
+        self.observations.policy.joint_pos.params = {"asset_cfg": KuavoS54_CFG.preserve_joint_order}
+        self.observations.policy.joint_vel.params = {"asset_cfg": KuavoS54_CFG.preserve_joint_order}
+        self.observations.critic.joint_pos_rel.params = {"asset_cfg": KuavoS54_CFG.preserve_joint_order}
+        self.observations.critic.joint_vel_rel.params = {"asset_cfg": KuavoS54_CFG.preserve_joint_order}
+        self.observations.critic.joint_torques.params = {"asset_cfg": KuavoS54_CFG.preserve_joint_order}
+        self.observations.critic.joint_accs.params = {"asset_cfg": KuavoS54_CFG.preserve_joint_order}
 
 
 @configclass
-class KuavoS42RoughEnvCfg_PLAY(KuavoS42RoughEnvCfg):
+class KuavoS54RoughEnvCfg_PLAY(KuavoS54RoughEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
 
         # make a smaller scene for play
-        self.scene.num_envs = 50
+        self.scene.num_envs = 1
         self.scene.env_spacing = 2.5
-        # spawn the robot randomly in the grid (instead of their terrain levels)
         self.scene.terrain.max_init_terrain_level = None
-        # reduce the number of terrains to save memory
+        self.episode_length_s = 1e9
+        
+        self.observations.policy.enable_corruption = False
+        self.observations.critic.enable_corruption = False
+        
+        self.events.physics_material = None
+        self.events.add_joint_default_pos.params ={
+            "asset_cfg": KuavoS54_CFG.preserve_joint_order,
+            "pos_distribution_params": (-0.0, 0.0),
+            "operation": "add",
+        }
+        self.events.add_base_mass = None
+        self.events.scale_link_mass = None
+        self.events.randomize_rigid_body_com = None
+        self.events.scale_actuator_gains = None
+        self.events.scale_joint_parameters = None
+
+        self.events.reset_robot_joints = None
+
+        self.events.push_robot = None
+        
         if self.scene.terrain.terrain_generator is not None:
             self.scene.terrain.terrain_generator.num_rows = 5
             self.scene.terrain.terrain_generator.num_cols = 5
             self.scene.terrain.terrain_generator.curriculum = False
 
-        # remove random pushing event
-        self.events.base_external_force_torque = None
-
-        self.commands.base_velocity.ranges.lin_vel_x = (1.0, 1.0)
-        self.commands.base_velocity.ranges.lin_vel_y = (0, 0)
-        self.commands.base_velocity.ranges.ang_vel_z = (0, 0)
+        self.commands.base_velocity.ranges.lin_vel_x = (-0.1, 0.1)
+        self.commands.base_velocity.ranges.lin_vel_y = (-0.1, 0.1)
+        self.commands.base_velocity.ranges.ang_vel_z = (-0.1, 0.1)
+        self.commands.base_velocity.ranges.heading = (-0, 0)
+        self.commands.base_velocity.heading_command = False

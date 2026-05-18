@@ -196,6 +196,9 @@ class LejuDelayedPDActuator(DelayedPDActuator):
         # build saturation effort limit tensor
         self.saturation_effort = self._parse_joint_parameter(self.cfg.effort_limit, 0.)
         self.effort_weaken_velocity_limit = self._parse_joint_parameter(self.cfg.effort_weaken_velocity_limit, 0.)
+        
+        self.dof_pos_illegal = torch.zeros(self._num_envs, device=self._device, dtype=torch.bool)
+        
     def reset(self, env_ids: Sequence[int]):
         super().reset(env_ids)
         self._joint_vel[env_ids] = 0.0
@@ -215,14 +218,21 @@ class LejuDelayedPDActuator(DelayedPDActuator):
         error_vel = control_action.joint_velocities - joint_vel
 
         # calculate the desired joint torques with friction compensation
+        # avoid division by zero which causes NaN!
+        safe_activation_vel = self.friction_activation_vel.clone()
+        safe_activation_vel[safe_activation_vel < 1e-6] = 1e-6
+
         self.computed_effort = (
             self.stiffness * error_pos 
             + self.damping * error_vel 
             + control_action.joint_efforts
-            - (self.friction_static * torch.tanh(joint_vel / self.friction_activation_vel) 
+            - (self.friction_static * torch.tanh(joint_vel / safe_activation_vel) 
             + self.friction_dynamic * joint_vel)
         )
         
+        self.dof_pos_illegal |= torch.isnan(self.computed_effort).any(dim=-1)
+        self.computed_effort[self.dof_pos_illegal] = 0.0
+
         # clip the torques based on the motor limits
         self.applied_effort = self._clip_effort(self.computed_effort)
         

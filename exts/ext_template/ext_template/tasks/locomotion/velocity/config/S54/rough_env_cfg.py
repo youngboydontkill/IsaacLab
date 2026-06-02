@@ -161,7 +161,7 @@ class ObservationsCfg:
         actions = ObsTerm(func=mdp.last_action)
 
         history_length = 5
-        flatten_history_dim = True
+        flatten_history_dim = False
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -241,7 +241,7 @@ class ObservationsCfg:
             },
         )
         history_length = 5
-        flatten_history_dim = True
+        flatten_history_dim = False
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
@@ -258,12 +258,12 @@ class RewardsCfg:
     # # # -- task
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_yaw_frame_exp,
-        weight=2.0,
+        weight=4,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     track_ang_vel_z_exp = RewTerm(
         func=mdp.track_ang_vel_z_world_exp,
-        weight=1.0,
+        weight=3,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     # -- penalties
@@ -304,7 +304,7 @@ class RewardsCfg:
 
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_clip,
-        weight=10.0,
+        weight=15.0,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg(
@@ -351,12 +351,24 @@ class RewardsCfg:
     )
     joint_deviation_arms = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.1,
+        weight=-1,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
                 joint_names=[
                     "zarm_.*",
+                ],
+            )
+        },
+    )
+    joint_deviation_waist = RewTerm(
+        func=mdp.joint_deviation_l1,
+        weight=-2.5,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    "waist_yaw_joint",
                 ],
             )
         },
@@ -618,28 +630,28 @@ class KuavoS54RoughEnvCfg_PLAY(KuavoS54RoughEnvCfg):
         self.observations.critic.enable_corruption = False
         
         self.events.physics_material = None
-        self.events.add_joint_default_pos.params ={
-            "asset_cfg": KuavoS54_CFG.preserve_joint_order,
-            "pos_distribution_params": (-0.0, 0.0),
-            "operation": "add",
-        }
-        self.events.add_base_mass = None
-        self.events.scale_link_mass = None
-        self.events.randomize_rigid_body_com = None
-        self.events.scale_actuator_gains = None
-        self.events.scale_joint_parameters = None
+        # self.events.add_joint_default_pos.params ={
+        #     "asset_cfg": KuavoS54_CFG.preserve_joint_order,
+        #     "pos_distribution_params": (-0.0, 0.0),
+        #     "operation": "add",
+        # }
+        # self.events.add_base_mass = None
+        # self.events.scale_link_mass = None
+        # self.events.randomize_rigid_body_com = None
+        # self.events.scale_actuator_gains = None
+        # self.events.scale_joint_parameters = None
 
         self.events.reset_robot_joints = None
 
-        self.events.push_robot = None
+        # self.events.push_robot = None
         
         if self.scene.terrain.terrain_generator is not None:
             self.scene.terrain.terrain_generator.num_rows = 5
             self.scene.terrain.terrain_generator.num_cols = 5
             self.scene.terrain.terrain_generator.curriculum = False
 
-        self.commands.base_velocity.ranges.lin_vel_x = (-0.1, 0.1)
-        self.commands.base_velocity.ranges.lin_vel_y = (-0.1, 0.1)
-        self.commands.base_velocity.ranges.ang_vel_z = (-0.1, 0.1)
+        self.commands.base_velocity.ranges.lin_vel_x = (-1, 1)
+        self.commands.base_velocity.ranges.lin_vel_y = (-0.4, 0.4)
+        self.commands.base_velocity.ranges.ang_vel_z = (-0.0, 0.0)
         self.commands.base_velocity.ranges.heading = (-0, 0)
         self.commands.base_velocity.heading_command = False

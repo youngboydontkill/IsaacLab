@@ -171,20 +171,22 @@ class RslRlPpoEncActorCriticCfg(RslRlPpoActorCriticCfg):
     actor_obs_normalization=True 
     critic_obs_normalization=True
     output_attention=False  # policy是否输出attention,这里主要用于可视化
-    velocity_estimation_enabled: bool = False  # 是否启用速度估计器
-    use_CENet: bool = False  # 是否启用CENet
+    # vel 才需要传递的参数
+    # velocity_estimation_enabled: bool = False  # 是否启用速度估计器
+    # use_CENet: bool = False  # 是否启用CENet
 
-    # --- add: critic estimator switches (to match EncVelActorCritic.__init__) ---
-    critic_estimator_enable: bool = False
-    critic_estimator_slice: list[int] = (91, 92, 93, 94, 95, 96, 97, 98)  # 默认值与模块里保持一致
+    # # --- add: critic estimator switches (to match EncVelActorCritic.__init__) ---
+    # critic_estimator_enable: bool = False
+    # critic_estimator_slice: list[int] = (91, 92, 93, 94, 95, 96, 97, 98)  # 默认值与模块里保持一致
 
 @configclass
 class RslRlPpoEncAlgorithmCfg(RslRlPpoAlgorithmCfg):
-    velocity_estimation_enabled: bool = False  # 是否启用速度估计器
-    use_CENet: bool = False  # 是否启用CENet
-    velocity_loss_coef: float = 1.0  # 速度估计损失系数
-    # --- add: keep cfg consistent with places that pass this flag ---
-    critic_estimator_enable: bool = False
+        value_loss_coef=1.0
+#     # velocity_estimation_enabled: bool = False  # 是否启用速度估计器
+#     # use_CENet: bool = False  # 是否启用CENet
+#     #velocity_loss_coef: float = 1.0  # 速度估计损失系数
+#     # --- add: keep cfg consistent with places that pass this flag ---
+#     #critic_estimator_enable: bool = False
 
 @configclass 
 class KuavoAttentionRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
@@ -207,14 +209,14 @@ class KuavoAttentionRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
             critic_hidden_dims=[512, 256, 128],
             activation="elu",
             embedding_dim=64,
-            # 31(15+16):velocity 64:critic reconstruction
-            load_mask=31, 
-            velocity_estimation_enabled = True,
-            critic_estimator_enable = False,
+            # 31(15+16):velocity 64:critic reconstruction 7+8 origin
+            load_mask=7+8, 
+            # velocity_estimation_enabled = False,
+            # critic_estimator_enable = False,
         ) 
     algorithm = RslRlPpoEncAlgorithmCfg(
         value_loss_coef=1.0,
-        velocity_loss_coef=1.0,
+        # velocity_loss_coef=1.0,
         use_clipped_value_loss=True,
         clip_param=0.2,
         entropy_coef=0.005,
@@ -226,8 +228,8 @@ class KuavoAttentionRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         lam=0.95,
         desired_kl=0.01,
         max_grad_norm=1.0,
-        velocity_estimation_enabled = True,
-        critic_estimator_enable = False,
+        # velocity_estimation_enabled = True,
+        # critic_estimator_enable = False,
     )
     def __post_init__(self):
         super().__post_init__()
@@ -274,8 +276,8 @@ class KuavoAttentionDreamWAQPPORunnerCfg(KuavoAttentionRoughPPORunnerCfg):
             activation="elu",
             embedding_dim=64,
             load_mask=47,
-            velocity_estimation_enabled = False,
-            use_CENet = True
+            # velocity_estimation_enabled = False,
+            # use_CENet = True
         )
     algorithm = RslRlPpoEncAlgorithmCfg(
         value_loss_coef=1.0,
@@ -290,8 +292,8 @@ class KuavoAttentionDreamWAQPPORunnerCfg(KuavoAttentionRoughPPORunnerCfg):
         lam=0.95,
         desired_kl=0.01,
         max_grad_norm=1.0,
-        velocity_estimation_enabled = False,
-        use_CENet = True
+        # velocity_estimation_enabled = False,
+        # use_CENet = True
     )
     def __post_init__(self):
         super().__post_init__()
@@ -330,10 +332,10 @@ class KuavoAttentionRoughPPORunnerPlayCfg(KuavoAttentionRoughPPORunnerCfg):
             critic_hidden_dims=[512, 256, 128],
             activation="elu",
             embedding_dim=64,
-            load_mask=31+64,
+            load_mask=7+8,  # 31+64 vel才需要
             output_attention=True,
-            velocity_estimation_enabled = True,
-            use_CENet = False
+            # velocity_estimation_enabled = True,
+            # use_CENet = False
         )
     def __post_init__(self):
         super().__post_init__()
@@ -352,8 +354,8 @@ class KuavoAttentionDreamWAQPPORunnerPlayCfg(KuavoAttentionRoughPPORunnerPlayCfg
             embedding_dim=64,
             load_mask=47,
             output_attention=True,
-            velocity_estimation_enabled = False,
-            use_CENet = True
+            # velocity_estimation_enabled = False,
+            # use_CENet = True
         )
     def __post_init__(self):
         super().__post_init__()

@@ -206,3 +206,7 @@ python scripts/rsl_rl/play_attention.py \
 
 ### CENet 训练配置
 在rsl_rl_ppo.cfg中新增KuavoAttentionDreamWAQPPORunnerCfg类，为配置CENet类。load_mask = 41为加载CENet
+
+
+
+五代机器人配置反注释了isaaclabsource/isaaclab/isaaclab/assets/articulation/articulation_data.py:98的屏蔽加速度

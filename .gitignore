@@ -26,3 +26,10 @@ nv_shadercache/
 
 # checkpoints
 *.pt 
+
+# robot model
+*.stl
+*.STL
+*.urdf
+*.xml
+biped_s52/

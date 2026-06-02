@@ -351,23 +351,29 @@ def stand_still_without_cmd(
     command_name: str,
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
     use_stance_mask: bool = True,
+    pos_weight: float = 1.0,
+    vel_weight: float = 1.0,
 ) -> torch.Tensor:
     asset: Articulation = env.scene[asset_cfg.name]
-    cmd = torch.linalg.norm(env.command_manager.get_command(command_name)[:, :3],dim=1)
-    body_vel = torch.linalg.norm(asset.data.root_lin_vel_b[:,:2], dim=1)
+    cmd = torch.linalg.norm(env.command_manager.get_command(command_name)[:, :3], dim=1)
+    
+    body_lin_vel = torch.linalg.norm(asset.data.root_lin_vel_b[:, :2], dim=1)
+    body_ang_vel = torch.abs(asset.data.root_ang_vel_b[:, 2])
+    body_vel = body_lin_vel + body_ang_vel
+    
     diff_angle = asset.data.joint_pos[:, asset_cfg.joint_ids] - asset.data.default_joint_pos[:, asset_cfg.joint_ids]
-    stance_reward = torch.linalg.norm(diff_angle, dim=1)
+    pos_reward = pos_weight * torch.sum(torch.abs(diff_angle), dim=1)
+    vel_reward = vel_weight * torch.sum(torch.abs(asset.data.joint_vel[:, asset_cfg.joint_ids]), dim=1)
+    stance_reward = pos_reward + vel_reward
+    
     if (not use_stance_mask):
-        reward = torch.where(torch.logical_or(cmd > 0.01,body_vel > 0.5),0.0,stance_reward)
+        reward = torch.where(torch.logical_or(cmd > 0.01, body_vel > 0.5), 0.0, stance_reward)
     else:
         # no reward for stepping
         is_stepping = env.command_manager.get_command(command_name)[:, 3] > 0.5
-        reward = torch.where(torch.logical_or(is_stepping,body_vel > 0.5),0.0,stance_reward)
-    # reward = torch.sum(torch.abs(diff_angle), dim=-1)
-    # reward *= (
-    #     torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) < 0.1
-    # )
-    reward *= torch.clamp(-asset.data.projected_gravity_b[:,2],0,0.7) / 0.7
+        reward = torch.where(torch.logical_or(is_stepping, body_vel > 0.5), 0.0, stance_reward)
+        
+    reward *= torch.clamp(-asset.data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
     return reward
 
 def feet_stumble(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:

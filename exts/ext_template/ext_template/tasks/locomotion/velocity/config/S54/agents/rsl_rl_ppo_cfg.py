@@ -134,8 +134,8 @@ class KuavoAttentionRoughPPORunnerPlayCfg(KuavoAttentionRoughPPORunnerCfg):
 @configclass
 class KuavoS54RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 15000
-    save_interval = 50
+    max_iterations = 60000
+    save_interval = 300
     experiment_name = "Kuavo/s54/rough"
     empirical_normalization = True
     # for rsl rl 3.0 
@@ -177,13 +177,20 @@ class KuavoS54RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
             "base_mass_rel","rigid_body_material","base_com","action_delay","push_force","push_torque",
             "feet_heights","feet_air_times"]
         # step 2 : 设置好对称性增强的规则
-        SymmetryAug2D.clear()
-        SymmetryAug2D.register_policy_obs(self.policy_obs_keys,self.history_len)
-        SymmetryAug2D.register_critic_obs(self.critic_obs_keys,self.history_len)
+        SymmetryAug.clear()
+        # 对于 SymmetryAug，由于不再在数据增强环节展开，也不再依赖 history_len 进行翻倍配置
+        SymmetryAug.register_obs("policy", self.policy_obs_keys, self.history_len)
+        SymmetryAug.register_obs("critic", self.critic_obs_keys, self.history_len)
 
         self.algorithm.symmetry_cfg = RslRlSymmetryCfg(
             use_data_augmentation=True, 
             use_mirror_loss=True,
             mirror_loss_coeff=1.0, 
-            data_augmentation_func=data_augmentation_dict_2d,
+            data_augmentation_func=data_augmentation_dict,
         )
+
+
+@configclass
+class KuavoS54RoughPPORunnerPlayCfg(KuavoS54RoughPPORunnerCfg):
+    def __post_init__(self):
+        super().__post_init__()

@@ -5,6 +5,7 @@
 import argparse
 
 from isaaclab.app import AppLauncher
+from exporter import export_policy_as_onnx_s54,generate_gym_obs_indices,OBSTERMLAB2GYM
 
 # local imports
 import cli_args  # isort: skip
@@ -134,6 +135,13 @@ def main():
             path=export_model_dir,
             filename="policy.onnx",
         )
+    export_policy_as_onnx_s54(
+        ppo_runner.alg.policy,
+        obs=agent_cfg.policy_obs_keys,
+        normalizer=getattr(ppo_runner.alg.policy, "actor_obs_normalizer", None),
+        path=export_model_dir,
+        filename="policy_s54.onnx"
+    )
 
     # reset environment
     obs = env.get_observations()

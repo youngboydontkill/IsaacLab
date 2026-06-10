@@ -4,20 +4,25 @@ import os
 import torch
 import copy
 
-# for lab 2 gym convert :
+S54_URDF2USD = [0, 6, 12, 1, 7, 13, 20, 2, 8, 14, 21, 3, 9, 15, 22, 4, 10, 16, 23, 5, 11, 17, 24, 18, 25, 19, 26]
+S54_USD2URDF = [0, 3, 7, 11, 15, 19, 1, 4, 8, 12, 16, 20, 2, 5, 9, 13, 17, 21, 23, 25, 6, 10, 14, 18, 22, 24, 26]
+
 OBSTERMLAB2GYM = {
             "base_ang_vel":[0,1,2],
             "gravity":[0,1,2],
             "cmd":[0,1,2,3],
             "cmd_vel":[0,1,2],
             "hugwbc_cmd":[0],
-            "joint_pos":[0, 4, 8, 12, 16, 20, 1, 5, 9, 13, 17, 21, 2, 6, 10, 14, 18, 22, 24, 3, 7, 11, 15, 19, 23, 25],
-            "joint_vel":[0, 4, 8, 12, 16, 20, 1, 5, 9, 13, 17, 21, 2, 6, 10, 14, 18, 22, 24, 3, 7, 11, 15, 19, 23, 25],
-            "action":[0, 4, 8, 12, 16, 20, 1, 5, 9, 13, 17, 21, 2, 6, 10, 14, 18, 22, 24, 3, 7, 11, 15, 19, 23, 25],
+            # 0 - 26
+            "joint_pos": [i for i in range(27)],
+            "joint_vel": [i for i in range(27)],
+            "action": S54_USD2URDF,
+
             "base_lin_vel": [0, 1, 2],
             "height_scan": [i for i in range(187)],
-            "joint_torques": [0, 4, 8, 12, 16, 20, 1, 5, 9, 13, 17, 21, 2, 6, 10, 14, 18, 22, 24, 3, 7, 11, 15, 19, 23, 25],
-            "joint_accs": [0, 4, 8, 12, 16, 20, 1, 5, 9, 13, 17, 21, 2, 6, 10, 14, 18, 22, 24, 3, 7, 11, 15, 19, 23, 25],
+            # 0 -> 26
+            "joint_torques": [i for i in range(27)],
+            "joint_accs": [i for i in range(27)],
             "feet_lin_vel": [i for i in range(6)],
             "feet_contact_force": [i for i in range(6)],
             "base_mass_rel": [0],
@@ -35,14 +40,14 @@ OBSTERMGYM2LAB = {
             "cmd":[0,1,2,3],
             "cmd_vel":[0,1,2],
             "hugwbc_cmd":[0],
-            "joint_pos":[0, 6, 12, 19, 1, 7, 13, 20, 2, 8, 14, 21, 3, 9, 15, 22, 4, 10, 16, 23, 5, 11, 17, 24, 18, 25],
-            "joint_vel":[0, 6, 12, 19, 1, 7, 13, 20, 2, 8, 14, 21, 3, 9, 15, 22, 4, 10, 16, 23, 5, 11, 17, 24, 18, 25],
-            "action":[0, 6, 12, 19, 1, 7, 13, 20, 2, 8, 14, 21, 3, 9, 15, 22, 4, 10, 16, 23, 5, 11, 17, 24, 18, 25],
+            "joint_pos": [i for i in range(27)],
+            "joint_vel": [i for i in range(27)],
+            "action": S54_URDF2USD,
             "base_lin_vel": [0, 1, 2],
             # 高程图，1.6m x 1.0m，分辨率0.1m，共17x11个点，排列顺序为xy，所以关于y对称就是每隔17个点为一列，把这11列倒序排列即可。符号不变。
             "height_scan": [i for i in range(187)],
-            "joint_torques": [0, 6, 12, 19, 1, 7, 13, 20, 2, 8, 14, 21, 3, 9, 15, 22, 4, 10, 16, 23, 5, 11, 17, 24, 18, 25],
-            "joint_accs": [0, 6, 12, 19, 1, 7, 13, 20, 2, 8, 14, 21, 3, 9, 15, 22, 4, 10, 16, 23, 5, 11, 17, 24, 18, 25],
+            "joint_torques":  [i for i in range(27)],
+            "joint_accs": [i for i in range(27)],
             "feet_lin_vel": [i for i in range(6)],
             "feet_contact_force": [i for i in range(6)],
             "base_mass_rel": [0],
@@ -101,7 +106,8 @@ def generate_gym_obs_indices(obs_keys:dict,history_len:int)->np.array:
     return lab2gym.astype(np.int32)
 
 def export_policy_as_onnx_s42(
-    actor_critic: object, path: str, obs:dict,normalizer: object | None = None, filename="policy.onnx", verbose=False
+    actor_critic: object, path: str, obs:dict, normalizer: object | None = None,
+    filename="policy.onnx", verbose=False, history_len:int=5
 ):
     """Export policy into a Torch ONNX file.
 
@@ -112,16 +118,40 @@ def export_policy_as_onnx_s42(
         path: The path to the saving directory.
         filename: The name of exported ONNX file. Defaults to "policy.onnx".
         verbose: Whether to print the model summary. Defaults to False.
+        history_len: History length for observation stacking. Defaults to 5.
     """
     if not os.path.exists(path):
         os.makedirs(path, exist_ok=True)
-    policy_exporter = _OnnxPolicyExporter(actor_critic, obs,normalizer, verbose)
+    policy_exporter = _OnnxPolicyExporter(actor_critic, obs, history_len, normalizer, verbose)
     policy_exporter.export(path, filename)
 
+def export_policy_as_onnx_s54(
+    actor_critic: object, path: str, obs:dict, normalizer: object | None = None,
+    filename="policy.onnx", verbose=False, history_len:int=5
+):
+    """Export S54 policy into ONNX file.
+
+    Args:
+        actor_critic: The actor-critic torch module.
+        obs: Policy observation keys from agent config.
+        normalizer: The empirical normalizer module. If None, Identity is used.
+        path: The path to the saving directory.
+        filename: The name of exported ONNX file. Defaults to "policy.onnx".
+        verbose: Whether to print the model summary. Defaults to False.
+        history_len: History length for observation stacking. Defaults to 5.
+
+    Note:
+        S54 uses identity mapping for action (IsaacLab and MuJoCo joint order are consistent).
+    """
+    if not os.path.exists(path):
+        os.makedirs(path, exist_ok=True)
+    policy_exporter = _OnnxPolicyExporter(actor_critic, obs, history_len, normalizer, verbose)
+    policy_exporter.export(path, filename)
+    
 class _OnnxPolicyExporter(torch.nn.Module):
     """Exporter of actor-critic into ONNX file."""
 
-    def __init__(self, actor_critic, obs:dict,normalizer=None, verbose=False):
+    def __init__(self, actor_critic, obs:dict, history_len:int=5, normalizer=None, verbose=False):
         super().__init__()
         self.verbose = verbose
         self.actor = copy.deepcopy(actor_critic.actor)
@@ -135,13 +165,13 @@ class _OnnxPolicyExporter(torch.nn.Module):
             self.normalizer = copy.deepcopy(normalizer)
         else:
             self.normalizer = torch.nn.Identity()
-        
-        self.policy_obs_keys = obs 
-        # 根据key构造gym2lab
-        history = 5
-        self.gym2lab = generate_lab_obs_indices(self.policy_obs_keys,history)
-        
-        self.lab2gym = [0, 4, 8, 12, 16, 20, 1, 5, 9, 13, 17, 21, 2, 6, 10, 14, 18, 22, 24, 3, 7, 11, 15, 19, 23, 25]
+
+        self.policy_obs_keys = obs
+        self.history_len = history_len
+        # 根据key构造gym2lab: 将 gym style 转换为 lab style
+        self.gym2lab = generate_lab_obs_indices(self.policy_obs_keys, self.history_len)
+        # S54: identity 映射 (IsaacLab 和 MuJoCo 关节顺序一致)
+        self.lab2gym = OBSTERMLAB2GYM["action"]
 
     def forward_lstm(self, x_in, h_in, c_in):
         x_in = self.normalizer(x_in)

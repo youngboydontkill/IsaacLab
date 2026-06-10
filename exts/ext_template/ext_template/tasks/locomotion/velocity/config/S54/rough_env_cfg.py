@@ -160,7 +160,7 @@ class ObservationsCfg:
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
         actions = ObsTerm(func=mdp.last_action)
 
-        history_length = 5
+        history_length = 1
         flatten_history_dim = False
 
         def __post_init__(self):
@@ -240,7 +240,7 @@ class ObservationsCfg:
                 ),
             },
         )
-        history_length = 5
+        history_length = 1
         flatten_history_dim = False
         def __post_init__(self):
             self.enable_corruption = False
@@ -258,12 +258,12 @@ class RewardsCfg:
     # # # -- task
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_yaw_frame_exp,
-        weight=4,
+        weight=7,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     track_ang_vel_z_exp = RewTerm(
         func=mdp.track_ang_vel_z_world_exp,
-        weight=3,
+        weight=5,
         params={"command_name": "base_velocity", "std": math.sqrt(0.25)},
     )
     # -- penalties
@@ -392,7 +392,7 @@ class RewardsCfg:
 
     stand_still_without_cmd = RewTerm(
         func=mdp.stand_still_without_cmd,
-        weight=-1.0,
+        weight=-10.0,
         params={
             "command_name": "base_velocity",
         },
